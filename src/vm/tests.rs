@@ -58,7 +58,7 @@ fn encode_number(n: usize) -> Strict {
 }
 
 #[test]
-fn test_id_on_id() {
+fn id_on_id() {
 	let id = id();
 	let id_on_id = application(id.clone(), [id.clone()]);
 
@@ -68,7 +68,7 @@ fn test_id_on_id() {
 }
 
 #[test]
-fn test_two_on_id() {
+fn two_on_id() {
 	let two = encode_number(2);
 	let id = id();
 	let two_on_id = application(two.clone(), [id.clone()]);
@@ -79,7 +79,7 @@ fn test_two_on_id() {
 }
 
 #[test]
-fn test_id_on_two() {
+fn id_on_two() {
 	let id = id();
 	let two = encode_number(2);
 	let id_on_two = application(id.clone(), [two.clone()]);
@@ -90,7 +90,7 @@ fn test_id_on_two() {
 }
 
 #[test]
-fn test_two_on_two() {
+fn two_on_two() {
 	let two = encode_number(2);
 	let two_on_two = application(two.clone(), [two.clone()]);
 	let four = encode_number(4);
@@ -101,7 +101,7 @@ fn test_two_on_two() {
 }
 
 #[test]
-fn test_modular_exponentiation() {
+fn modular_exponentiation() {
 	let type_0 = lambda(lambda(lambda(binding(2))));
 	let type_1 = lambda(lambda(lambda(binding(1))));
 	let type_2 = lambda(lambda(lambda(binding(0))));
@@ -117,7 +117,7 @@ fn test_modular_exponentiation() {
 	])));
 
 	const CYCLES: usize = 10;
-	let expected = if CYCLES % 2 == 0 {&rotate} else {&counter_rotate};
+	let expected = if CYCLES % 2 == 0 { &rotate } else { &counter_rotate };
 
 	let mut expr = rotate.clone();
 

@@ -28,7 +28,7 @@ fn recursive_deletion(node: Node) {
 			let Some(port) = port.try_unlink() else {
 				continue;
 			};
-	
+
 			nodes.push(port.node().clone());
 		}
 	}
