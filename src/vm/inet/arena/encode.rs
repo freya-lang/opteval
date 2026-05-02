@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::vm::inet::arena::{Arena, Output};
-use crate::vm::inet::base::{Data, Node, Port};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Port};
 use crate::vm::inet::util::anchor;
 use crate::vm::term::{Strict, Term};
 
@@ -41,13 +41,18 @@ fn encode_inner(input: &Strict) -> EncodingData {
 
 			let main_output = anchor();
 
-			let lambda = Node::new(Data::Lambda { live: true });
+			let possible_binding_port = body.bindings.remove(&0);
+			let known_closed = body.bindings.len() == 0;
+
+			let lambda = Node::new(Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			});
 
 			Port::link(&main_output, &lambda.main());
 
 			body.main_output.swap(&lambda.aux(1));
 
-			if let Some(binding_port) = body.bindings.remove(&0) {
+			if let Some(binding_port) = possible_binding_port {
 				binding_port.swap(&lambda.aux(0));
 			} else {
 				let deletion_anchor = anchor();

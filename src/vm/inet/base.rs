@@ -4,8 +4,15 @@ use std::rc::Rc;
 
 use crate::vm::inet::util::anchor;
 
+#[derive(Debug)]
+pub(crate) enum LambdaKind {
+	Live { known_closed: bool },
+	NotLive,
+}
+
+#[derive(Debug)]
 pub(crate) enum Data {
-	Lambda { live: bool },
+	Lambda { kind: LambdaKind },
 	Application { live: bool },
 	Replicator { level: usize, count: usize },
 	Ascend { level: usize },
@@ -17,7 +24,7 @@ pub(crate) enum Data {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Kind {
+pub(crate) enum PortKind {
 	Main,
 	Aux(usize),
 }
@@ -28,7 +35,7 @@ struct Cell(RefCell<Option<Port>>);
 #[derive(Clone)]
 pub(crate) struct Port {
 	node: Node,
-	kind: Kind,
+	kind: PortKind,
 }
 
 #[derive(Clone)]
@@ -43,8 +50,12 @@ struct Backing {
 impl Data {
 	fn num_aux(&self) -> usize {
 		match self {
-			Data::Lambda { live: true } => 2,
-			Data::Lambda { live: false } => 1,
+			Data::Lambda {
+				kind: LambdaKind::Live { .. },
+			} => 2,
+			Data::Lambda {
+				kind: LambdaKind::NotLive,
+			} => 1,
 			Data::Application { .. } => 2,
 			Data::Replicator { count, .. } => *count,
 			Data::Ascend { .. } => 1,
@@ -74,12 +85,12 @@ impl Cell {
 impl Port {
 	fn cell(&self) -> &Cell {
 		match self.kind {
-			Kind::Main => &self.node.0.main,
-			Kind::Aux(i) => &self.node.0.aux[i],
+			PortKind::Main => &self.node.0.main,
+			PortKind::Aux(i) => &self.node.0.aux[i],
 		}
 	}
 
-	pub(crate) fn kind(&self) -> &Kind {
+	pub(crate) fn kind(&self) -> &PortKind {
 		&self.kind
 	}
 
@@ -144,7 +155,7 @@ impl Node {
 	pub(crate) fn main(&self) -> Port {
 		Port {
 			node: self.clone(),
-			kind: Kind::Main,
+			kind: PortKind::Main,
 		}
 	}
 
@@ -153,7 +164,7 @@ impl Node {
 
 		Port {
 			node: self.clone(),
-			kind: Kind::Aux(i),
+			kind: PortKind::Aux(i),
 		}
 	}
 
@@ -162,7 +173,7 @@ impl Node {
 
 		(0 .. this.0.aux.len()).map(move |i| Port {
 			node: this.clone(),
-			kind: Kind::Aux(i),
+			kind: PortKind::Aux(i),
 		})
 	}
 

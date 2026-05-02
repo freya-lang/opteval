@@ -5,7 +5,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 pub(crate) use crate::vm::inet::arena::encode::encode;
-use crate::vm::inet::base::{Data, Kind, Node, Port};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Port, PortKind};
 use crate::vm::inet::interaction::interact;
 use crate::vm::inet::util::anchor;
 use crate::vm::term::Term;
@@ -48,7 +48,7 @@ impl Output {
 			let linked = loop {
 				let linked = current.linked().unwrap();
 
-				if matches!(linked.kind(), Kind::Main) {
+				if matches!(linked.kind(), PortKind::Main) {
 					break linked;
 				}
 
@@ -62,7 +62,9 @@ impl Output {
 				current.unlink();
 
 				return match linked.node().data() {
-					Data::Lambda { live: false } => {
+					Data::Lambda {
+						kind: LambdaKind::NotLive,
+					} => {
 						let new_output = Self {
 							arena: self.arena.clone(),
 							port: anchor(),

@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::mem::swap;
 
-use crate::vm::inet::base::{Data, Kind, Node, Port};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Port, PortKind};
 use crate::vm::inet::util::{anchor, join_slice};
 
 fn mirror<A, B>((a, b): (A, B)) -> (B, A) {
@@ -9,8 +9,8 @@ fn mirror<A, B>((a, b): (A, B)) -> (B, A) {
 }
 
 pub(crate) fn interact(left: &Port, right: &Port) {
-	debug_assert!(*left.kind() == Kind::Main);
-	debug_assert!(*right.kind() == Kind::Main);
+	debug_assert!(*left.kind() == PortKind::Main);
+	debug_assert!(*right.kind() == PortKind::Main);
 	debug_assert!(left.linked().as_ref() == Some(right));
 	debug_assert!(right.linked().as_ref() == Some(left));
 
@@ -20,11 +20,31 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 	let right_aux: Vec<_> = right.node().iter_aux().map(|port| port.retract()).collect();
 
 	let (left_new, right_new) = match (left.node().data(), right.node().data()) {
-		(&Data::Application { live: true }, &Data::Lambda { live: true }) => application_lambda(),
-		(&Data::Lambda { live: true }, &Data::Application { live: true }) => mirror(application_lambda()),
+		(
+			&Data::Application { live: true },
+			&Data::Lambda {
+				kind: LambdaKind::Live { .. },
+			},
+		) => application_lambda(),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { .. },
+			},
+			&Data::Application { live: true },
+		) => mirror(application_lambda()),
 
-		(&Data::Replicator { level, count }, &Data::Lambda { live: true }) => replicator_lambda(level, count),
-		(&Data::Lambda { live: true }, &Data::Replicator { level, count }) => mirror(replicator_lambda(level, count)),
+		(
+			&Data::Replicator { level, count },
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+		) => replicator_lambda(level, count, known_closed),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+			&Data::Replicator { level, count },
+		) => mirror(replicator_lambda(level, count, known_closed)),
 
 		(&Data::Replicator { level, count }, &Data::Application { live }) => replicator_application(level, count, live),
 		(&Data::Application { live }, &Data::Replicator { level, count }) => {
@@ -48,8 +68,18 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 		(&Data::Replicator { count, .. }, &Data::Binding { index }) => replicator_binding(count, index),
 		(&Data::Binding { index }, &Data::Replicator { count, .. }) => mirror(replicator_binding(count, index)),
 
-		(&Data::Ascend { level }, &Data::Lambda { live: true }) => ascend_lambda(level),
-		(&Data::Lambda { live: true }, &Data::Ascend { level }) => mirror(ascend_lambda(level)),
+		(
+			&Data::Ascend { level },
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+		) => ascend_lambda(level, known_closed),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+			&Data::Ascend { level },
+		) => mirror(ascend_lambda(level, known_closed)),
 
 		(&Data::Ascend { level }, &Data::Application { live }) => ascend_application(level, live),
 		(&Data::Application { live }, &Data::Ascend { level }) => mirror(ascend_application(level, live)),
@@ -83,8 +113,18 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 			mirror(ascend_descend(ascend_level, descend_level))
 		},
 
-		(&Data::Descend { level }, &Data::Lambda { live: true }) => descend_lambda(level),
-		(&Data::Lambda { live: true }, &Data::Descend { level }) => mirror(descend_lambda(level)),
+		(
+			&Data::Descend { level },
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+		) => descend_lambda(level, known_closed),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+			&Data::Descend { level },
+		) => mirror(descend_lambda(level, known_closed)),
 
 		(&Data::Descend { level }, &Data::Application { live }) => descend_application(level, live),
 		(&Data::Application { live }, &Data::Descend { level }) => mirror(descend_application(level, live)),
@@ -111,8 +151,18 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 		(&Data::Descend { .. }, &Data::Binding { index }) => binding_unaffected(index),
 		(&Data::Binding { index }, &Data::Descend { .. }) => mirror(binding_unaffected(index)),
 
-		(&Data::Reformat, &Data::Lambda { live: true }) => reformat_lambda(),
-		(&Data::Lambda { live: true }, &Data::Reformat) => mirror(reformat_lambda()),
+		(
+			&Data::Reformat,
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+		) => reformat_lambda(known_closed),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { known_closed },
+			},
+			&Data::Reformat,
+		) => mirror(reformat_lambda(known_closed)),
 
 		(&Data::Reformat, &Data::Application { live: true }) => reformat_application(),
 		(&Data::Application { live: true }, &Data::Reformat) => mirror(reformat_application()),
@@ -125,8 +175,18 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 
 		(&Data::Reformat, &Data::Reformat) => reformat_reformat(),
 
-		(&Data::Unlink { level }, &Data::Lambda { live: true }) => unlink_lambda(level),
-		(&Data::Lambda { live: true }, &Data::Unlink { level }) => mirror(unlink_lambda(level)),
+		(
+			&Data::Unlink { level },
+			&Data::Lambda {
+				kind: LambdaKind::Live { .. },
+			},
+		) => unlink_lambda(level),
+		(
+			&Data::Lambda {
+				kind: LambdaKind::Live { .. },
+			},
+			&Data::Unlink { level },
+		) => mirror(unlink_lambda(level)),
 
 		(&Data::Unlink { level }, &Data::Application { live: false }) => unlink_application(level),
 		(&Data::Application { live: false }, &Data::Unlink { level }) => mirror(unlink_application(level)),
@@ -165,7 +225,7 @@ fn application_lambda() -> (Vec<Port>, Vec<Port>) {
 	])
 }
 
-fn replicator_lambda(level: usize, count: usize) -> (Vec<Port>, Vec<Port>) {
+fn replicator_lambda(level: usize, count: usize, known_closed: bool) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
@@ -182,7 +242,9 @@ fn replicator_lambda(level: usize, count: usize) -> (Vec<Port>, Vec<Port>) {
 	for i in 0 .. count {
 		let left_anchor = anchor();
 
-		let lambda = Node::new(Data::Lambda { live: true });
+		let lambda = Node::new(Data::Lambda {
+			kind: LambdaKind::Live { known_closed },
+		});
 
 		Port::link(&left_anchor, &lambda.main());
 		Port::link(&lambda.aux(0), &replicator_in.aux(i));
@@ -319,22 +381,30 @@ fn replicator_binding(count: usize, index: usize) -> (Vec<Port>, Vec<Port>) {
 	(left_anchors, Vec::new())
 }
 
-fn ascend_lambda(level: usize) -> (Vec<Port>, Vec<Port>) {
+fn ascend_lambda(level: usize, known_closed: bool) -> (Vec<Port>, Vec<Port>) {
 	let left_anchor = anchor();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let lambda = Node::new(Data::Lambda { live: true });
-	let ascend_in = Node::new(Data::Ascend { level: level + 1 });
-	let ascend_out = Node::new(Data::Ascend { level: level + 1 });
+	let lambda = Node::new(Data::Lambda {
+		kind: LambdaKind::Live { known_closed },
+	});
 
 	Port::link(&left_anchor, &lambda.main());
 
-	Port::link(&lambda.aux(0), &ascend_in.aux(0));
-	Port::link(&ascend_in.main(), &right_anchor_in);
+	if known_closed {
+		Port::link(&lambda.aux(0), &right_anchor_in);
+		Port::link(&lambda.aux(1), &right_anchor_out);
+	} else {
+		let ascend_in = Node::new(Data::Ascend { level: level + 1 });
+		let ascend_out = Node::new(Data::Ascend { level: level + 1 });
 
-	Port::link(&lambda.aux(1), &ascend_out.aux(0));
-	Port::link(&ascend_out.main(), &right_anchor_out);
+		Port::link(&lambda.aux(0), &ascend_in.aux(0));
+		Port::link(&ascend_in.main(), &right_anchor_in);
+
+		Port::link(&lambda.aux(1), &ascend_out.aux(0));
+		Port::link(&ascend_out.main(), &right_anchor_out);
+	}
 
 	(vec![left_anchor], vec![right_anchor_in, right_anchor_out])
 }
@@ -458,22 +528,30 @@ fn ascend_descend(mut ascend_level: usize, mut descend_level: usize) -> (Vec<Por
 	(vec![left_anchor], vec![right_anchor])
 }
 
-fn descend_lambda(level: usize) -> (Vec<Port>, Vec<Port>) {
+fn descend_lambda(level: usize, known_closed: bool) -> (Vec<Port>, Vec<Port>) {
 	let left_anchor = anchor();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let lambda = Node::new(Data::Lambda { live: true });
-	let descend_in = Node::new(Data::Descend { level: level + 1 });
-	let descend_out = Node::new(Data::Descend { level: level + 1 });
+	let lambda = Node::new(Data::Lambda {
+		kind: LambdaKind::Live { known_closed },
+	});
 
 	Port::link(&left_anchor, &lambda.main());
 
-	Port::link(&lambda.aux(0), &descend_in.aux(0));
-	Port::link(&descend_in.main(), &right_anchor_in);
+	if known_closed {
+		Port::link(&lambda.aux(0), &right_anchor_in);
+		Port::link(&lambda.aux(1), &right_anchor_out);
+	} else {
+		let descend_in = Node::new(Data::Descend { level: level + 1 });
+		let descend_out = Node::new(Data::Descend { level: level + 1 });
 
-	Port::link(&lambda.aux(1), &descend_out.aux(0));
-	Port::link(&descend_out.main(), &right_anchor_out);
+		Port::link(&lambda.aux(0), &descend_in.aux(0));
+		Port::link(&descend_in.main(), &right_anchor_in);
+
+		Port::link(&lambda.aux(1), &descend_out.aux(0));
+		Port::link(&descend_out.main(), &right_anchor_out);
+	}
 
 	(vec![left_anchor], vec![right_anchor_in, right_anchor_out])
 }
@@ -558,12 +636,14 @@ fn descend_descend(mut left_level: usize, mut right_level: usize) -> (Vec<Port>,
 	(vec![left_anchor], vec![right_anchor])
 }
 
-fn reformat_lambda() -> (Vec<Port>, Vec<Port>) {
+fn reformat_lambda(known_closed: bool) -> (Vec<Port>, Vec<Port>) {
 	let left_anchor = anchor();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let lambda = Node::new(Data::Lambda { live: true });
+	let lambda = Node::new(Data::Lambda {
+		kind: LambdaKind::Live { known_closed },
+	});
 	let reformat_in = Node::new(Data::Reformat);
 	let reformat_out = Node::new(Data::Reformat);
 
@@ -642,7 +722,9 @@ fn unlink_lambda(mut level: usize) -> (Vec<Port>, Vec<Port>) {
 
 	level += 1;
 
-	let lambda = Node::new(Data::Lambda { live: false });
+	let lambda = Node::new(Data::Lambda {
+		kind: LambdaKind::NotLive,
+	});
 	let unlink = Node::new(Data::Unlink { level });
 	let binding = Node::new(Data::Binding { index: level });
 
