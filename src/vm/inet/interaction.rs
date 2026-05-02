@@ -131,6 +131,9 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 		(&Data::Unlink { level }, &Data::Application { live: false }) => unlink_application(level),
 		(&Data::Application { live: false }, &Data::Unlink { level }) => mirror(unlink_application(level)),
 
+		(&Data::Unlink { level }, &Data::Ascend { .. }) => unlink_ascend(level),
+		(&Data::Ascend { .. }, &Data::Unlink { level }) => mirror(unlink_ascend(level)),
+
 		(&Data::Unlink { level }, &Data::Binding { index }) => unlink_binding(level, index),
 		(&Data::Binding { index }, &Data::Unlink { level }) => mirror(unlink_binding(level, index)),
 
@@ -147,14 +150,14 @@ fn application_lambda() -> (Vec<Port>, Vec<Port>) {
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let ascend = Node::new(Data::Ascend { level: 0 });
-	let descend = Node::new(Data::Descend { level: 0 });
+	let in_ascend = Node::new(Data::Ascend { level: 0 });
+	let out_ascend = Node::new(Data::Ascend { level: 0 });
 
-	Port::link(&left_anchor_in, &ascend.main());
-	Port::link(&ascend.aux(0), &right_anchor_in);
+	Port::link(&left_anchor_in, &in_ascend.main());
+	Port::link(&in_ascend.aux(0), &right_anchor_in);
 
-	Port::link(&left_anchor_out, &descend.aux(0));
-	Port::link(&descend.main(), &right_anchor_out);
+	Port::link(&left_anchor_out, &out_ascend.main());
+	Port::link(&out_ascend.aux(0), &right_anchor_out);
 
 	(vec![left_anchor_in, left_anchor_out], vec![
 		right_anchor_in,
@@ -341,17 +344,29 @@ fn ascend_application(level: usize, live: bool) -> (Vec<Port>, Vec<Port>) {
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let application = Node::new(Data::Application { live });
-	let ascend_in = Node::new(Data::Ascend { level });
-	let ascend_out = Node::new(Data::Ascend { level });
+	if level == 0 && live {
+		let descend = Node::new(Data::Descend { level });
+		let appplication = Node::new(Data::Application { live });
 
-	Port::link(&left_anchor, &application.main());
+		Port::link(&left_anchor, &descend.main());
 
-	Port::link(&application.aux(0), &ascend_in.aux(0));
-	Port::link(&ascend_in.main(), &right_anchor_in);
+		Port::link(&descend.aux(0), &appplication.main());
 
-	Port::link(&application.aux(1), &ascend_out.aux(0));
-	Port::link(&ascend_out.main(), &right_anchor_out);
+		Port::link(&appplication.aux(0), &right_anchor_in);
+		Port::link(&appplication.aux(1), &right_anchor_out);
+	} else {
+		let application = Node::new(Data::Application { live });
+		let ascend_in = Node::new(Data::Ascend { level });
+		let ascend_out = Node::new(Data::Ascend { level });
+
+		Port::link(&left_anchor, &application.main());
+
+		Port::link(&application.aux(0), &ascend_in.aux(0));
+		Port::link(&ascend_in.main(), &right_anchor_in);
+
+		Port::link(&application.aux(1), &ascend_out.aux(0));
+		Port::link(&ascend_out.main(), &right_anchor_out);
+	}
 
 	(vec![left_anchor], vec![right_anchor_in, right_anchor_out])
 }
@@ -418,18 +433,27 @@ fn ascend_descend(mut ascend_level: usize, mut descend_level: usize) -> (Vec<Por
 	let left_anchor = anchor();
 	let right_anchor = anchor();
 
-	match ascend_level.cmp(&descend_level) {
-		Ordering::Equal => panic!(),
-		Ordering::Less => descend_level += 1,
-		Ordering::Greater => ascend_level -= 1,
+	if ascend_level == 0 && descend_level == 0 {
+		let descend_0 = Node::new(Data::Descend { level: 0 });
+		let descend_1 = Node::new(Data::Descend { level: 0 });
+
+		Port::link(&left_anchor, &descend_0.main());
+		Port::link(&descend_0.aux(0), &descend_1.main());
+		Port::link(&descend_1.aux(0), &right_anchor);
+	} else {
+		match ascend_level.cmp(&descend_level) {
+			Ordering::Equal => panic!(),
+			Ordering::Less => descend_level += 1,
+			Ordering::Greater => ascend_level -= 1,
+		}
+
+		let descend = Node::new(Data::Descend { level: descend_level });
+		let ascend = Node::new(Data::Ascend { level: ascend_level });
+
+		Port::link(&left_anchor, &descend.main());
+		Port::link(&descend.aux(0), &ascend.aux(0));
+		Port::link(&ascend.main(), &right_anchor);
 	}
-
-	let descend = Node::new(Data::Descend { level: descend_level });
-	let ascend = Node::new(Data::Ascend { level: ascend_level });
-
-	Port::link(&left_anchor, &descend.main());
-	Port::link(&descend.aux(0), &ascend.aux(0));
-	Port::link(&ascend.main(), &right_anchor);
 
 	(vec![left_anchor], vec![right_anchor])
 }
@@ -650,6 +674,18 @@ fn unlink_application(level: usize) -> (Vec<Port>, Vec<Port>) {
 	Port::link(&unlink_out.main(), &right_anchor_out);
 
 	(vec![left_anchor], vec![right_anchor_in, right_anchor_out])
+}
+
+fn unlink_ascend(level: usize) -> (Vec<Port>, Vec<Port>) {
+	let left_anchor = anchor();
+	let right_anchor = anchor();
+
+	let unlink = Node::new(Data::Unlink { level });
+
+	Port::link(&left_anchor, &unlink.aux(0));
+	Port::link(&unlink.main(), &right_anchor);
+
+	(vec![left_anchor], vec![right_anchor])
 }
 
 fn unlink_binding(level: usize, index: usize) -> (Vec<Port>, Vec<Port>) {
