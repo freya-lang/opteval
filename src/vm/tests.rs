@@ -129,3 +129,19 @@ fn modular_exponentiation() {
 
 	assert_stricts_equal(&resolved, expected);
 }
+
+#[test]
+fn many_exponentiations_on_id_id() {
+	const N: usize = 250;
+
+	let id = id();
+
+	let expr = application(
+		application(application(encode_number(N), [encode_number(2)]), [id.clone()]),
+		[id.clone()],
+	);
+
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &id);
+}
