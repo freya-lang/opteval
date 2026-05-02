@@ -1,4 +1,4 @@
-use crate::vm::{Lazy, Strict, Term};
+use crate::vm::term::{Lazy, Strict, Term};
 
 fn lambda(body: Strict) -> Strict {
 	Strict::new(Term::Lambda { body })
