@@ -25,7 +25,7 @@ impl Scope {
 		Self { start, end }
 	}
 
-	pub(crate) fn directly_related(&self, other: &Self) -> bool {
+	pub(crate) fn is_directly_related(&self, other: &Self) -> bool {
 		match self.start.cmp(&other.start) {
 			Ordering::Less => match self.end.cmp(&other.end) {
 				Ordering::Less => false,
