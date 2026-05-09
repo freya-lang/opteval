@@ -1,4 +1,5 @@
 mod inet;
+mod oracle;
 mod term;
 
 #[cfg(test)]
