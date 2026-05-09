@@ -192,7 +192,7 @@ fn add_element() {
 }
 
 #[test]
-fn test_chained_iota() {
+fn chained_iota() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 	let b = a.iota();
@@ -201,7 +201,7 @@ fn test_chained_iota() {
 }
 
 #[test]
-fn test_repeated_iota() {
+fn repeated_iota() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 	let b = base.iota();
@@ -210,7 +210,7 @@ fn test_repeated_iota() {
 }
 
 #[test]
-fn test_many_repeated_iotas() {
+fn many_repeated_iotas() {
 	let base = OrderedElement::new_base();
 	let mut elements = Vec::new();
 
@@ -224,7 +224,7 @@ fn test_many_repeated_iotas() {
 }
 
 #[test]
-fn test_many_chained_iotas() {
+fn many_chained_iotas() {
 	let mut element = OrderedElement::new_base();
 	let mut elements = Vec::new();
 
@@ -240,7 +240,7 @@ fn test_many_chained_iotas() {
 }
 
 #[test]
-fn test_equality() {
+fn equality() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 
@@ -249,7 +249,7 @@ fn test_equality() {
 
 #[test]
 #[should_panic]
-fn test_compare_with_base() {
+fn compare_with_base() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 
@@ -258,7 +258,7 @@ fn test_compare_with_base() {
 
 #[test]
 #[should_panic]
-fn test_compare_between_different_arenas() {
+fn compare_between_different_arenas() {
 	let base_a = OrderedElement::new_base();
 	let base_b = OrderedElement::new_base();
 
@@ -269,7 +269,7 @@ fn test_compare_between_different_arenas() {
 }
 
 #[test]
-fn basic_test_length() {
+fn basic_length_checks() {
 	let base = OrderedElement::new_base();
 	let arena = base.arena.clone();
 
