@@ -240,7 +240,7 @@ fn many_chained_iotas() {
 }
 
 #[test]
-fn equality() {
+fn basic_equality() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 
