@@ -207,3 +207,62 @@ fn test_repeated_iota() {
 
 	assert!(a > b);
 }
+
+#[test]
+fn test_many_repeated_iotas() {
+	let root = OrderedElement::new_root();
+	let mut elements = Vec::new();
+
+	for _ in 0 .. 10000 {
+		elements.push(root.iota());
+	}
+
+	for [a, b] in elements.array_windows() {
+		assert!(a > b);
+	}
+}
+
+#[test]
+fn test_many_chained_iotas() {
+	let mut element = OrderedElement::new_root();
+	let mut elements = Vec::new();
+
+	for _ in 0 .. 10000 {
+		let new_element = element.iota();
+		elements.push(new_element.clone());
+		element = new_element;
+	}
+
+	for [a, b] in elements.array_windows() {
+		assert!(a < b);
+	}
+}
+
+#[test]
+fn test_equality() {
+	let root = OrderedElement::new_root();
+	let a = root.iota();
+
+	assert!(a == a);
+}
+
+#[test]
+#[should_panic]
+fn test_compare_with_root() {
+	let root = OrderedElement::new_root();
+	let a = root.iota();
+
+	let _ = root.cmp(&a);
+}
+
+#[test]
+#[should_panic]
+fn test_compare_between_different_roots() {
+	let root_a = OrderedElement::new_root();
+	let root_b = OrderedElement::new_root();
+
+	let a = root_a.iota();
+	let b = root_b.iota();
+
+	let _ = a.cmp(&b);
+}
