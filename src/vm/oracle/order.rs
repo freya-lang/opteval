@@ -75,22 +75,23 @@ impl OrderedElement {
 			let divided = total_span / j;
 			let remainder = total_span % j;
 
-			let mut first_index = base_index.wrapping_add(total_span);
+			let mut first_offset = total_span;
 
 			let mut node = self.inner.clone();
 
 			for i in 1 .. j {
 				node = node.get_next();
 
-				let index = base_index.wrapping_add(divided * i + u128::from(i <= remainder));
+				let offset = divided * i + u128::from(i <= remainder);
+				let index = base_index.wrapping_add(offset);
 				node.index.set(index);
 
 				if i == 1 {
-					first_index = index;
+					first_offset = offset;
 				}
 			}
 
-			first_index / 2
+			base_index.wrapping_add(first_offset / 2)
 		};
 
 		let next = self.inner.get_next();
