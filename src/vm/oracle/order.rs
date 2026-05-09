@@ -46,7 +46,10 @@ impl OrderedElement {
 			}
 		});
 
-		OrderedElement { node: arena.base.clone(), arena }
+		OrderedElement {
+			node: arena.base.clone(),
+			arena,
+		}
 	}
 
 	pub(crate) fn iota(&self) -> Self {
@@ -110,7 +113,10 @@ impl OrderedElement {
 
 		self.arena.len.set(len + 1);
 
-		Self { arena: self.arena.clone(), node: new_node }
+		Self {
+			arena: self.arena.clone(),
+			node: new_node,
+		}
 	}
 }
 
@@ -278,19 +284,19 @@ fn basic_length_checks() {
 	let a = base.iota();
 
 	assert!(arena.len.get() == 2);
-	
+
 	drop(base);
 
 	assert!(arena.len.get() == 2);
-	
+
 	let b = a.iota();
 
 	assert!(arena.len.get() == 3);
-	
+
 	drop(a);
 
 	assert!(arena.len.get() == 2);
-	
+
 	drop(b);
 
 	assert!(arena.len.get() == 1);
