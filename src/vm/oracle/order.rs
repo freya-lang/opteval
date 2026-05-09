@@ -279,25 +279,25 @@ fn basic_length_checks() {
 	let base = OrderedElement::new_base();
 	let arena = base.arena.clone();
 
-	assert!(arena.len.get() == 1);
+	assert_eq!(arena.len.get(), 1);
 
 	let a = base.iota();
 
-	assert!(arena.len.get() == 2);
+	assert_eq!(arena.len.get(), 2);
 
 	drop(base);
 
-	assert!(arena.len.get() == 2);
+	assert_eq!(arena.len.get(), 2);
 
 	let b = a.iota();
 
-	assert!(arena.len.get() == 3);
+	assert_eq!(arena.len.get(), 3);
 
 	drop(a);
 
-	assert!(arena.len.get() == 2);
+	assert_eq!(arena.len.get(), 2);
 
 	drop(b);
 
-	assert!(arena.len.get() == 1);
+	assert_eq!(arena.len.get(), 1);
 }
