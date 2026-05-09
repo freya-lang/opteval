@@ -115,7 +115,14 @@ impl Ord for OrderedElement {
 			panic!("attempted to compare incompatible OrderedElements");
 		}
 
-		let base_index = self.inner.owner.base.borrow().as_ref().unwrap().index.get();
+		let base_ref = self.inner.owner.base.borrow();
+		let base = base_ref.as_ref().unwrap();
+
+		if Rc::ptr_eq(&base, &self.inner) || Rc::ptr_eq(&base, &other.inner) {
+			panic!("attempted to compare OrderedElement with root");
+		}
+
+		let base_index = base.index.get();
 
 		let offset_self = self.inner.index.get().wrapping_sub(base_index);
 		let offset_other = other.inner.index.get().wrapping_sub(base_index);
