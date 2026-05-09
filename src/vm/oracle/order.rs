@@ -192,7 +192,7 @@ fn add_element() {
 }
 
 #[test]
-fn chained_iota() {
+fn chained_iotas() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 	let b = a.iota();
@@ -201,7 +201,7 @@ fn chained_iota() {
 }
 
 #[test]
-fn repeated_iota() {
+fn repeated_iotas() {
 	let base = OrderedElement::new_base();
 	let a = base.iota();
 	let b = base.iota();
