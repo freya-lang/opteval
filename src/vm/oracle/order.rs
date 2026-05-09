@@ -168,3 +168,32 @@ impl Drop for Node {
 		*next.prev.borrow_mut() = Rc::downgrade(&prev);
 	}
 }
+
+#[test]
+fn create_and_delete() {
+	OrderedElement::new_root();
+}
+
+#[test]
+fn add_element() {
+	let root = OrderedElement::new_root();
+	root.iota();
+}
+
+#[test]
+fn test_chained_iota() {
+	let root = OrderedElement::new_root();
+	let a = root.iota();
+	let b = a.iota();
+
+	assert!(a < b);
+}
+
+#[test]
+fn test_repeated_iota() {
+	let root = OrderedElement::new_root();
+	let a = root.iota();
+	let b = root.iota();
+
+	assert!(a > b);
+}
