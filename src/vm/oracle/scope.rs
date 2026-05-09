@@ -45,3 +45,25 @@ impl Scope {
 		}
 	}
 }
+
+#[test]
+fn basic_operations() {
+	let root = Scope::new_root();
+
+	let a = root.new_child();
+	let b = root.new_child();
+
+	assert!(root.is_directly_related(&a));
+	assert!(root.is_directly_related(&b));
+
+	assert!(!a.is_directly_related(&b));
+
+	let aa = a.new_child();
+
+	assert!(root.is_directly_related(&aa));
+
+	drop(a);
+
+	assert!(root.is_directly_related(&aa));
+	assert!(!aa.is_directly_related(&b));
+}
