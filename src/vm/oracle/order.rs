@@ -31,7 +31,7 @@ impl Node {
 }
 
 impl OrderedElement {
-	pub(crate) fn new_root() -> Self {
+	pub(crate) fn new_base() -> Self {
 		let arena = Rc::new_cyclic(|arena| {
 			let base = Rc::new_cyclic(|base| Node {
 				arena: arena.clone(),
@@ -123,7 +123,7 @@ impl Ord for OrderedElement {
 		let base = &self.arena.base;
 
 		if Rc::ptr_eq(&base, &self.node) || Rc::ptr_eq(&base, &other.node) {
-			panic!("attempted to compare OrderedElement with root");
+			panic!("attempted to compare OrderedElement with base");
 		}
 
 		let base_index = base.index.get();
@@ -182,19 +182,19 @@ impl Drop for Arena {
 
 #[test]
 fn create_and_delete() {
-	OrderedElement::new_root();
+	OrderedElement::new_base();
 }
 
 #[test]
 fn add_element() {
-	let root = OrderedElement::new_root();
-	root.iota();
+	let base = OrderedElement::new_base();
+	base.iota();
 }
 
 #[test]
 fn test_chained_iota() {
-	let root = OrderedElement::new_root();
-	let a = root.iota();
+	let base = OrderedElement::new_base();
+	let a = base.iota();
 	let b = a.iota();
 
 	assert!(a < b);
@@ -202,20 +202,20 @@ fn test_chained_iota() {
 
 #[test]
 fn test_repeated_iota() {
-	let root = OrderedElement::new_root();
-	let a = root.iota();
-	let b = root.iota();
+	let base = OrderedElement::new_base();
+	let a = base.iota();
+	let b = base.iota();
 
 	assert!(a > b);
 }
 
 #[test]
 fn test_many_repeated_iotas() {
-	let root = OrderedElement::new_root();
+	let base = OrderedElement::new_base();
 	let mut elements = Vec::new();
 
 	for _ in 0 .. 10000 {
-		elements.push(root.iota());
+		elements.push(base.iota());
 	}
 
 	for [a, b] in elements.array_windows() {
@@ -225,7 +225,7 @@ fn test_many_repeated_iotas() {
 
 #[test]
 fn test_many_chained_iotas() {
-	let mut element = OrderedElement::new_root();
+	let mut element = OrderedElement::new_base();
 	let mut elements = Vec::new();
 
 	for _ in 0 .. 10000 {
@@ -241,29 +241,29 @@ fn test_many_chained_iotas() {
 
 #[test]
 fn test_equality() {
-	let root = OrderedElement::new_root();
-	let a = root.iota();
+	let base = OrderedElement::new_base();
+	let a = base.iota();
 
 	assert!(a == a);
 }
 
 #[test]
 #[should_panic]
-fn test_compare_with_root() {
-	let root = OrderedElement::new_root();
-	let a = root.iota();
+fn test_compare_with_base() {
+	let base = OrderedElement::new_base();
+	let a = base.iota();
 
-	let _ = root.cmp(&a);
+	let _ = base.cmp(&a);
 }
 
 #[test]
 #[should_panic]
-fn test_compare_between_different_roots() {
-	let root_a = OrderedElement::new_root();
-	let root_b = OrderedElement::new_root();
+fn test_compare_between_different_arenas() {
+	let base_a = OrderedElement::new_base();
+	let base_b = OrderedElement::new_base();
 
-	let a = root_a.iota();
-	let b = root_b.iota();
+	let a = base_a.iota();
+	let b = base_b.iota();
 
 	let _ = a.cmp(&b);
 }
