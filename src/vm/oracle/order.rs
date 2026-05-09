@@ -106,6 +106,8 @@ impl OrderedElement {
 		*self.inner.next.borrow_mut() = Rc::downgrade(&new_node);
 		*next.prev.borrow_mut() = Rc::downgrade(&new_node);
 
+		self.inner.owner.len.set(len + 1);
+
 		Self { inner: new_node }
 	}
 }
