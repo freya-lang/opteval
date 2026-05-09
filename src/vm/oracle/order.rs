@@ -267,3 +267,31 @@ fn test_compare_between_different_arenas() {
 
 	let _ = a.cmp(&b);
 }
+
+#[test]
+fn basic_test_length() {
+	let base = OrderedElement::new_base();
+	let arena = base.arena.clone();
+
+	assert!(arena.len.get() == 1);
+
+	let a = base.iota();
+
+	assert!(arena.len.get() == 2);
+	
+	drop(base);
+
+	assert!(arena.len.get() == 2);
+	
+	let b = a.iota();
+
+	assert!(arena.len.get() == 3);
+	
+	drop(a);
+
+	assert!(arena.len.get() == 2);
+	
+	drop(b);
+
+	assert!(arena.len.get() == 1);
+}
