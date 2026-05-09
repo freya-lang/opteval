@@ -4,18 +4,19 @@ use std::rc::{Rc, Weak};
 
 #[derive(Clone)]
 pub(crate) struct OrderedElement {
-	inner: Rc<Node>,
+	node: Rc<Node>,
+	arena: Rc<Arena>,
 }
 
 struct Node {
-	owner: Rc<Arena>,
+	arena: Weak<Arena>,
 	index: Cell<u128>,
 	prev: RefCell<Weak<Node>>,
 	next: RefCell<Weak<Node>>,
 }
 
 struct Arena {
-	base: RefCell<Option<Rc<Node>>>,
+	base: Rc<Node>,
 	len: Cell<u64>,
 }
 
@@ -31,35 +32,36 @@ impl Node {
 
 impl OrderedElement {
 	pub(crate) fn new_root() -> Self {
-		let arena = Arena {
-			base: RefCell::new(None),
-			len: Cell::new(1),
-		};
-		let node = Rc::new_cyclic(|weak| Node {
-			owner: Rc::new(arena),
-			index: Cell::new(0),
-			prev: RefCell::new(weak.clone()),
-			next: RefCell::new(weak.clone()),
+		let arena = Rc::new_cyclic(|arena| {
+			let base = Rc::new_cyclic(|base| Node {
+				arena: arena.clone(),
+				index: Cell::new(0),
+				prev: RefCell::new(base.clone()),
+				next: RefCell::new(base.clone()),
+			});
+
+			Arena {
+				base,
+				len: Cell::new(1),
+			}
 		});
 
-		*node.owner.base.borrow_mut() = Some(node.clone());
-
-		OrderedElement { inner: node }
+		OrderedElement { node: arena.base.clone(), arena }
 	}
 
 	pub(crate) fn iota(&self) -> Self {
-		let len = self.inner.owner.len.get();
+		let len = self.arena.len.get();
 
 		if len == u64::MAX {
 			panic!("OrderedElement arena is full");
 		}
 
 		let index = if len == 1 {
-			self.inner.index.get().wrapping_add(u128::MAX ^ u128::MAX >> 1)
+			self.node.index.get().wrapping_add(u128::MAX ^ u128::MAX >> 1)
 		} else {
-			let base_index = self.inner.index.get();
+			let base_index = self.node.index.get();
 
-			let mut node = self.inner.clone();
+			let mut node = self.node.clone();
 			let mut j = 1;
 			let total_span = loop {
 				node = node.get_next();
@@ -77,7 +79,7 @@ impl OrderedElement {
 
 			let mut first_offset = total_span;
 
-			let mut node = self.inner.clone();
+			let mut node = self.node.clone();
 
 			for i in 1 .. j {
 				node = node.get_next();
@@ -94,41 +96,40 @@ impl OrderedElement {
 			base_index.wrapping_add(first_offset / 2)
 		};
 
-		let next = self.inner.get_next();
+		let next = self.node.get_next();
 
 		let new_node = Rc::new(Node {
-			owner: self.inner.owner.clone(),
+			arena: Rc::downgrade(&self.arena),
 			index: Cell::new(index),
-			prev: RefCell::new(Rc::downgrade(&self.inner)),
+			prev: RefCell::new(Rc::downgrade(&self.node)),
 			next: RefCell::new(Rc::downgrade(&next)),
 		});
 
-		*self.inner.next.borrow_mut() = Rc::downgrade(&new_node);
+		*self.node.next.borrow_mut() = Rc::downgrade(&new_node);
 		*next.prev.borrow_mut() = Rc::downgrade(&new_node);
 
-		self.inner.owner.len.set(len + 1);
+		self.arena.len.set(len + 1);
 
-		Self { inner: new_node }
+		Self { arena: self.arena.clone(), node: new_node }
 	}
 }
 
 impl Ord for OrderedElement {
 	fn cmp(&self, other: &Self) -> Ordering {
-		if !Rc::ptr_eq(&self.inner.owner, &other.inner.owner) {
+		if !Rc::ptr_eq(&self.arena, &other.arena) {
 			panic!("attempted to compare incompatible OrderedElements");
 		}
 
-		let base_ref = self.inner.owner.base.borrow();
-		let base = base_ref.as_ref().unwrap();
+		let base = &self.arena.base;
 
-		if Rc::ptr_eq(&base, &self.inner) || Rc::ptr_eq(&base, &other.inner) {
+		if Rc::ptr_eq(&base, &self.node) || Rc::ptr_eq(&base, &other.node) {
 			panic!("attempted to compare OrderedElement with root");
 		}
 
 		let base_index = base.index.get();
 
-		let offset_self = self.inner.index.get().wrapping_sub(base_index);
-		let offset_other = other.inner.index.get().wrapping_sub(base_index);
+		let offset_self = self.node.index.get().wrapping_sub(base_index);
+		let offset_other = other.node.index.get().wrapping_sub(base_index);
 
 		offset_self.cmp(&offset_other)
 	}
@@ -148,34 +149,34 @@ impl PartialEq for OrderedElement {
 	}
 }
 
+impl Drop for OrderedElement {
+	fn drop(&mut self) {
+		eprintln!("OrderedElement dropped...");
+	}
+}
+
 impl Drop for Node {
 	fn drop(&mut self) {
-		let mut len = self.owner.len.get();
+		eprintln!("Node dropped...");
 
-		if len == 1 {
+		let Some(arena) = self.arena.upgrade() else {
+			eprintln!("short circuit");
 			return;
-		}
+		};
 
-		len -= 1;
-
-		self.owner.len.set(len);
-
-		if len == 1 {
-			let mut base_ref = self.owner.base.borrow_mut();
-
-			match Rc::try_unwrap(base_ref.take().unwrap()) {
-				Ok(_) => return,
-				Err(base) => {
-					*base_ref = Some(base);
-				},
-			}
-		}
+		arena.len.update(|len| len - 1);
 
 		let prev = self.get_prev();
 		let next = self.get_next();
 
 		*prev.next.borrow_mut() = Rc::downgrade(&next);
 		*next.prev.borrow_mut() = Rc::downgrade(&prev);
+	}
+}
+
+impl Drop for Arena {
+	fn drop(&mut self) {
+		eprintln!("Arena dropped...");
 	}
 }
 
