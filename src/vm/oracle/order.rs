@@ -155,18 +155,9 @@ impl PartialEq for OrderedElement {
 	}
 }
 
-impl Drop for OrderedElement {
-	fn drop(&mut self) {
-		eprintln!("OrderedElement dropped...");
-	}
-}
-
 impl Drop for Node {
 	fn drop(&mut self) {
-		eprintln!("Node dropped...");
-
 		let Some(arena) = self.arena.upgrade() else {
-			eprintln!("short circuit");
 			return;
 		};
 
@@ -177,12 +168,6 @@ impl Drop for Node {
 
 		*prev.next.borrow_mut() = Rc::downgrade(&next);
 		*next.prev.borrow_mut() = Rc::downgrade(&prev);
-	}
-}
-
-impl Drop for Arena {
-	fn drop(&mut self) {
-		eprintln!("Arena dropped...");
 	}
 }
 

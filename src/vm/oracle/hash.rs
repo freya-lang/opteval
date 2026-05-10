@@ -4,13 +4,6 @@ pub(crate) fn hash(source_data: impl IntoIterator<Item = u8>) -> [u8; 32] {
 
 	ascon_12(&mut state);
 
-	eprintln!("state:");
-	eprintln!("0x{:>016x}", state[0]);
-	eprintln!("0x{:>016x}", state[1]);
-	eprintln!("0x{:>016x}", state[2]);
-	eprintln!("0x{:>016x}", state[3]);
-	eprintln!("0x{:>016x}", state[4]);
-
 	loop {
 		let mut buffer = [0; 8];
 		let mut i = 0;
