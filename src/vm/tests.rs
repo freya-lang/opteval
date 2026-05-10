@@ -101,6 +101,29 @@ fn two_on_two() {
 }
 
 #[test]
+fn fuse_two_and_two() {
+	let two = encode_number(2);
+	let fused = lambda(application(two.clone(), [application(two.clone(), [binding(0)])]));
+	let four = encode_number(4);
+
+	let resolved = Lazy::encode(&fused).to_strict();
+
+	assert_stricts_equal(&resolved, &four);
+}
+
+#[test]
+fn pair_on_omega() {
+	let omega = lambda(application(binding(0), [binding(0)]));
+	let pair = lambda(lambda(application(binding(0), [binding(1), binding(1)])));
+	let pair_on_omega = application(pair.clone(), [omega.clone()]);
+	let expected = lambda(application(binding(0), [omega.clone(), omega.clone()]));
+
+	let resolved = Lazy::encode(&pair_on_omega).to_strict();
+
+	assert_stricts_equal(&resolved, &expected);
+}
+
+#[test]
 fn modular_exponentiation() {
 	let type_0 = lambda(lambda(lambda(binding(2))));
 	let type_1 = lambda(lambda(lambda(binding(1))));
