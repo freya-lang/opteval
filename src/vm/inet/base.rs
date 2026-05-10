@@ -3,20 +3,17 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 
 use crate::vm::inet::util::anchor;
+use crate::vm::oracle::Tag;
 
-#[derive(Debug)]
 pub(crate) enum LambdaKind {
-	Live { known_closed: bool },
+	Live,
 	NotLive,
 }
 
-#[derive(Debug)]
 pub(crate) enum Data {
 	Lambda { kind: LambdaKind },
 	Application { live: bool },
-	Replicator { level: usize, count: usize },
-	Ascend { level: usize },
-	Descend { level: usize },
+	Replicator { tag: Tag, count: usize },
 	Reformat,
 	Unlink { level: usize },
 	Binding { index: usize },
@@ -50,16 +47,12 @@ struct Backing {
 impl Data {
 	fn num_aux(&self) -> usize {
 		match self {
-			Data::Lambda {
-				kind: LambdaKind::Live { .. },
-			} => 2,
+			Data::Lambda { kind: LambdaKind::Live } => 2,
 			Data::Lambda {
 				kind: LambdaKind::NotLive,
 			} => 1,
 			Data::Application { .. } => 2,
 			Data::Replicator { count, .. } => *count,
-			Data::Ascend { .. } => 1,
-			Data::Descend { .. } => 1,
 			Data::Reformat { .. } => 1,
 			Data::Unlink { .. } => 1,
 			Data::Binding { .. } => 0,

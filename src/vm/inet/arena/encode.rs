@@ -4,10 +4,12 @@ use std::rc::Rc;
 use crate::vm::inet::arena::{Arena, Output};
 use crate::vm::inet::base::{Data, LambdaKind, Node, Port};
 use crate::vm::inet::util::anchor;
+use crate::vm::oracle::Oracle;
 use crate::vm::term::{Strict, Term};
 
 pub(crate) fn encode(input: &Strict) -> Output {
-	let encoded = encode_inner(&input);
+	let oracle = Oracle::new();
+	let encoded = encode_inner(&oracle, &input);
 
 	debug_assert!(encoded.bindings.len() == 0);
 
@@ -34,25 +36,20 @@ struct EncodingData {
 	deletion_anchors: Vec<Node>,
 }
 
-fn encode_inner(input: &Strict) -> EncodingData {
+fn encode_inner(oracle: &Oracle, input: &Strict) -> EncodingData {
 	match input.get() {
 		Term::Lambda { body } => {
-			let mut body = encode_inner(body);
+			let mut body = encode_inner(oracle, body);
 
 			let main_output = anchor();
 
-			let possible_binding_port = body.bindings.remove(&0);
-			let known_closed = body.bindings.len() == 0;
-
-			let lambda = Node::new(Data::Lambda {
-				kind: LambdaKind::Live { known_closed },
-			});
+			let lambda = Node::new(Data::Lambda { kind: LambdaKind::Live });
 
 			Port::link(&main_output, &lambda.main());
 
 			body.main_output.swap(&lambda.aux(1));
 
-			if let Some(binding_port) = possible_binding_port {
+			if let Some(binding_port) = body.bindings.remove(&0) {
 				binding_port.swap(&lambda.aux(0));
 			} else {
 				let deletion_anchor = anchor();
@@ -75,8 +72,8 @@ fn encode_inner(input: &Strict) -> EncodingData {
 			}
 		},
 		Term::Application { left, right } => {
-			let mut left = encode_inner(left);
-			let mut right = encode_inner(right);
+			let mut left = encode_inner(oracle, left);
+			let mut right = encode_inner(oracle, right);
 
 			let main_output = anchor();
 
@@ -106,7 +103,10 @@ fn encode_inner(input: &Strict) -> EncodingData {
 					(Some(left), Some(right)) => {
 						let binding_port = anchor();
 
-						let replicator = Node::new(Data::Replicator { level: 0, count: 2 });
+						let replicator = Node::new(Data::Replicator {
+							tag: oracle.new_tag(),
+							count: 2,
+						});
 
 						Port::link(&binding_port, &replicator.main());
 
@@ -137,19 +137,9 @@ fn encode_inner(input: &Strict) -> EncodingData {
 		},
 		Term::Binding { index } => {
 			let anchor_in = anchor();
-			let mut current = anchor_in.clone();
-
-			for _ in 0 .. index {
-				let ascend = Node::new(Data::Ascend { level: 0 });
-
-				Port::link(&current, &ascend.main());
-
-				current = ascend.aux(0);
-			}
-
 			let anchor_out = anchor();
 
-			Port::link(&current, &anchor_out);
+			Port::link(&anchor_in, &anchor_out);
 
 			let mut bindings = HashMap::new();
 			bindings.insert(index, anchor_in);
