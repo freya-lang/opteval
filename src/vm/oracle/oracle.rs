@@ -75,8 +75,8 @@ impl Tag {
 		self.inner.scope.is_directly_related(&other.inner.scope)
 	}
 
-	pub(crate) fn combine(&self, other: &Self, index: u64) -> Self {
-		let id = combine_tags(self.inner.id, other.inner.id, index);
+	pub(crate) fn combine(&self, other: &Self, index: usize) -> Self {
+		let id = combine_tags(self.inner.id, other.inner.id, index.try_into().expect("overflowed u64 in tag index"));
 
 		if let Some(weak) = self.inner.arena.map.borrow().get(&id) {
 			Self {
