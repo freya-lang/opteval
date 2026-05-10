@@ -95,3 +95,23 @@ impl Drop for TagInner {
 		self.arena.map.borrow_mut().remove(&self.id);
 	}
 }
+
+#[test]
+fn basic_operations() {
+	let oracle = Oracle::new();
+
+	let tag_a = oracle.new_tag();
+	let tag_b = oracle.new_tag();
+
+	assert!(tag_a.should_meet(&tag_a));
+	assert!(!tag_a.should_meet(&tag_b));
+
+	let tag_ab0 = tag_a.combine(&tag_b, 0);
+	let tag_ab1 = tag_a.combine(&tag_b, 1);
+
+	assert!(tag_a.should_meet(&tag_ab0));
+	assert!(tag_a.should_meet(&tag_ab1));
+	assert!(!tag_b.should_meet(&tag_ab0));
+	assert!(!tag_b.should_meet(&tag_ab1));
+	assert!(!tag_ab0.should_meet(&tag_ab1));
+}
