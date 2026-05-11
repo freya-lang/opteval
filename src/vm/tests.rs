@@ -112,18 +112,6 @@ fn fuse_two_and_two() {
 }
 
 #[test]
-fn pair_on_omega() {
-	let omega = lambda(application(binding(0), [binding(0)]));
-	let pair = lambda(lambda(application(binding(0), [binding(1), binding(1)])));
-	let pair_on_omega = application(pair.clone(), [omega.clone()]);
-	let expected = lambda(application(binding(0), [omega.clone(), omega.clone()]));
-
-	let resolved = Lazy::encode(&pair_on_omega).to_strict();
-
-	assert_stricts_equal(&resolved, &expected);
-}
-
-#[test]
 fn modular_exponentiation() {
 	let type_0 = lambda(lambda(lambda(binding(2))));
 	let type_1 = lambda(lambda(lambda(binding(1))));
@@ -170,6 +158,18 @@ fn two_on_counter_rotate() {
 	])));
 
 	let expr = application(encode_number(3), [counter_rotate]);
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &expected);
+}
+
+#[test]
+fn duplicate_on_omega() {
+	let duplicate = lambda(lambda(application(binding(0), [binding(1), binding(1)])));
+	let omega = lambda(application(binding(0), [binding(0)]));
+	let expected = lambda(application(binding(0), [omega.clone(), omega.clone()]));
+
+	let expr = application(duplicate.clone(), [omega.clone()]);
 	let resolved = Lazy::encode(&expr).to_strict();
 
 	assert_stricts_equal(&resolved, &expected);
