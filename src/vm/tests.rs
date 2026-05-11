@@ -154,6 +154,40 @@ fn modular_exponentiation() {
 }
 
 #[test]
+fn two_on_counter_rotate() {
+	let type_0 = lambda(lambda(lambda(binding(2))));
+	let type_1 = lambda(lambda(lambda(binding(1))));
+	let type_2 = lambda(lambda(lambda(binding(0))));
+	let counter_rotate = lambda(lambda(application(binding(0), [
+		application(binding(1), [type_1.clone()]),
+		application(binding(1), [type_2.clone()]),
+		application(binding(1), [type_0.clone()]),
+	])));
+	let expected = lambda(lambda(application(binding(0), [
+		application(binding(1), [type_0.clone()]),
+		application(binding(1), [type_1.clone()]),
+		application(binding(1), [type_2.clone()]),
+	])));
+
+	let expr = application(encode_number(3), [counter_rotate]);
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &expected);
+}
+
+#[test]
+fn triplicate_on_omega() {
+	let triplicate = lambda(lambda(application(binding(0), [binding(1), binding(1), binding(1)])));
+	let omega = lambda(application(binding(0), [binding(0)]));
+	let expected = lambda(application(binding(0), [omega.clone(), omega.clone(), omega.clone()]));
+
+	let expr = application(triplicate.clone(), [omega.clone()]);
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &expected);
+}
+
+#[test]
 fn many_exponentiations_on_id_id() {
 	const N: usize = 250;
 
