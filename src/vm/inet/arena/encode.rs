@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::vm::inet::arena::{Arena, Output};
-use crate::vm::inet::base::{Data, LambdaKind, Node, Port};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Polarity, Port};
 use crate::vm::inet::util::anchor;
 use crate::vm::oracle::Oracle;
 use crate::vm::term::{Strict, Term};
@@ -106,6 +106,7 @@ fn encode_inner(oracle: &Oracle, input: &Strict) -> EncodingData {
 						let replicator = Node::new(Data::Replicator {
 							tag: oracle.new_tag(),
 							count: 2,
+							polarity: Polarity::Negative,
 						});
 
 						Port::link(&binding_port, &replicator.main());
