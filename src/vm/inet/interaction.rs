@@ -1,7 +1,4 @@
-use std::cmp::Ordering;
-use std::mem::swap;
-
-use crate::vm::inet::base::{Data, LambdaKind, Node, Polarity, Port, PortKind};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Port, PortKind};
 use crate::vm::inet::util::{anchor, join_slice};
 use crate::vm::oracle::Tag;
 
@@ -24,76 +21,31 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 		(&Data::Application { live: true }, &Data::Lambda { kind: LambdaKind::Live }) => application_lambda(),
 		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Application { live: true }) => mirror(application_lambda()),
 
-		(
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity: Polarity::Negative,
-			},
-			&Data::Lambda { kind: LambdaKind::Live },
-		) => replicator_lambda(tag, count),
-		(
-			&Data::Lambda { kind: LambdaKind::Live },
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity: Polarity::Negative,
-			},
-		) => mirror(replicator_lambda(tag, count)),
+		(&Data::Replicator { ref tag, count }, &Data::Lambda { kind: LambdaKind::Live }) => {
+			replicator_lambda(tag, count)
+		},
+		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Replicator { ref tag, count }) => {
+			mirror(replicator_lambda(tag, count))
+		},
 
-		(
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity: Polarity::Positive,
-			},
-			&Data::Application { live },
-		) => replicator_application(tag, count, live),
-		(
-			&Data::Application { live },
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity: Polarity::Positive,
-			},
-		) => mirror(replicator_application(tag, count, live)),
+		(&Data::Replicator { ref tag, count }, &Data::Application { live }) => replicator_application(tag, count, live),
+		(&Data::Application { live }, &Data::Replicator { ref tag, count }) => {
+			mirror(replicator_application(tag, count, live))
+		},
 
 		(
 			&Data::Replicator {
 				tag: ref left_tag,
 				count: left_count,
-				polarity: left_polarity,
 			},
 			&Data::Replicator {
 				tag: ref right_tag,
 				count: right_count,
-				polarity: right_polarity,
 			},
-		) => replicator_replicator(
-			left_tag,
-			left_count,
-			left_polarity,
-			right_tag,
-			right_count,
-			right_polarity,
-		),
+		) => replicator_replicator(left_tag, left_count, right_tag, right_count),
 
-		(
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity,
-			},
-			&Data::Reformat,
-		) => replicator_reformat(tag, count, polarity),
-		(
-			&Data::Reformat,
-			&Data::Replicator {
-				ref tag,
-				count,
-				polarity,
-			},
-		) => mirror(replicator_reformat(tag, count, polarity)),
+		(&Data::Replicator { ref tag, count }, &Data::Reformat) => replicator_reformat(tag, count),
+		(&Data::Reformat, &Data::Replicator { ref tag, count }) => mirror(replicator_reformat(tag, count)),
 
 		(&Data::Replicator { count, .. }, &Data::Binding { index }) => replicator_binding(count, index),
 		(&Data::Binding { index }, &Data::Replicator { count, .. }) => mirror(replicator_binding(count, index)),
@@ -155,12 +107,10 @@ fn replicator_lambda(tag: &Tag, count: usize) -> (Vec<Port>, Vec<Port>) {
 	let replicator_in = Node::new(Data::Replicator {
 		tag: tag.clone(),
 		count,
-		polarity: Polarity::Positive,
 	});
 	let replicator_out = Node::new(Data::Replicator {
 		tag: tag.clone(),
 		count,
-		polarity: Polarity::Negative,
 	});
 
 	for i in 0 .. count {
@@ -189,12 +139,10 @@ fn replicator_application(tag: &Tag, count: usize, live: bool) -> (Vec<Port>, Ve
 	let replicator_in = Node::new(Data::Replicator {
 		tag: tag.clone(),
 		count,
-		polarity: Polarity::Positive,
 	});
 	let replicator_out = Node::new(Data::Replicator {
 		tag: tag.clone(),
 		count,
-		polarity: Polarity::Negative,
 	});
 
 	for i in 0 .. count {
@@ -218,10 +166,8 @@ fn replicator_application(tag: &Tag, count: usize, live: bool) -> (Vec<Port>, Ve
 fn replicator_replicator(
 	left_tag: &Tag,
 	left_count: usize,
-	left_polarity: Polarity,
 	right_tag: &Tag,
 	right_count: usize,
-	right_polarity: Polarity,
 ) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let mut right_anchors = Vec::new();
@@ -233,7 +179,7 @@ fn replicator_replicator(
 		right_anchors.push(anchor());
 	}
 
-	if left_tag.should_meet(right_tag) {
+	if left_tag == right_tag {
 		debug_assert!(left_count == right_count);
 
 		for i in 0 .. left_count {
@@ -248,12 +194,8 @@ fn replicator_replicator(
 
 	for i in 0 .. left_count {
 		let replicator = Node::new(Data::Replicator {
-			tag: match right_polarity {
-				Polarity::Negative => right_tag.combine(left_tag, i),
-				Polarity::Positive => right_tag.clone(),
-			},
+			tag: right_tag.combine(left_tag, i),
 			count: right_count,
-			polarity: right_polarity,
 		});
 		left_aux.push(replicator.iter_aux().collect());
 
@@ -262,12 +204,8 @@ fn replicator_replicator(
 
 	for i in 0 .. right_count {
 		let replicator = Node::new(Data::Replicator {
-			tag: match left_polarity {
-				Polarity::Negative => left_tag.combine(right_tag, i),
-				Polarity::Positive => left_tag.clone(),
-			},
+			tag: left_tag.clone(),
 			count: left_count,
-			polarity: left_polarity,
 		});
 		right_aux.push(replicator.iter_aux().collect());
 
@@ -283,14 +221,13 @@ fn replicator_replicator(
 	(left_anchors, right_anchors)
 }
 
-fn replicator_reformat(tag: &Tag, count: usize, polarity: Polarity) -> (Vec<Port>, Vec<Port>) {
+fn replicator_reformat(tag: &Tag, count: usize) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let right_anchor = anchor();
 
 	let replicator = Node::new(Data::Replicator {
 		tag: tag.clone(),
 		count,
-		polarity,
 	});
 
 	for i in 0 .. count {

@@ -10,16 +10,10 @@ pub(crate) enum LambdaKind {
 	NotLive,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) enum Polarity {
-	Negative,
-	Positive,
-}
-
 pub(crate) enum Data {
 	Lambda { kind: LambdaKind },
 	Application { live: bool },
-	Replicator { tag: Tag, count: usize, polarity: Polarity },
+	Replicator { tag: Tag, count: usize },
 	Reformat,
 	Unlink { level: usize },
 	Binding { index: usize },

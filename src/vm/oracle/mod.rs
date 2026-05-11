@@ -3,4 +3,4 @@ mod oracle;
 mod order;
 mod scope;
 
-pub(crate) use crate::vm::oracle::oracle::{Oracle, Tag};
+pub(crate) use crate::vm::oracle::oracle::Tag;

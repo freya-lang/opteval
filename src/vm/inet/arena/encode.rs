@@ -2,14 +2,14 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::vm::inet::arena::{Arena, Output};
-use crate::vm::inet::base::{Data, LambdaKind, Node, Polarity, Port};
+use crate::vm::inet::base::{Data, LambdaKind, Node, Port};
 use crate::vm::inet::util::anchor;
-use crate::vm::oracle::Oracle;
+use crate::vm::oracle::Tag;
 use crate::vm::term::{Strict, Term};
 
 pub(crate) fn encode(input: &Strict) -> Output {
-	let oracle = Oracle::new();
-	let encoded = encode_inner(&oracle, &input);
+	let mut counter = 0;
+	let encoded = encode_inner(&mut counter, &input);
 
 	debug_assert!(encoded.bindings.len() == 0);
 
@@ -36,10 +36,10 @@ struct EncodingData {
 	deletion_anchors: Vec<Node>,
 }
 
-fn encode_inner(oracle: &Oracle, input: &Strict) -> EncodingData {
+fn encode_inner(counter: &mut u64, input: &Strict) -> EncodingData {
 	match input.get() {
 		Term::Lambda { body } => {
-			let mut body = encode_inner(oracle, body);
+			let mut body = encode_inner(counter, body);
 
 			let main_output = anchor();
 
@@ -72,8 +72,8 @@ fn encode_inner(oracle: &Oracle, input: &Strict) -> EncodingData {
 			}
 		},
 		Term::Application { left, right } => {
-			let mut left = encode_inner(oracle, left);
-			let mut right = encode_inner(oracle, right);
+			let mut left = encode_inner(counter, left);
+			let mut right = encode_inner(counter, right);
 
 			let main_output = anchor();
 
@@ -104,10 +104,10 @@ fn encode_inner(oracle: &Oracle, input: &Strict) -> EncodingData {
 						let binding_port = anchor();
 
 						let replicator = Node::new(Data::Replicator {
-							tag: oracle.new_tag(),
+							tag: Tag::new(*counter),
 							count: 2,
-							polarity: Polarity::Negative,
 						});
+						*counter = counter.checked_add(1).unwrap();
 
 						Port::link(&binding_port, &replicator.main());
 

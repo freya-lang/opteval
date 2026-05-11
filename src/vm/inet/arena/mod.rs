@@ -1,5 +1,6 @@
 mod encode;
 
+use std::collections::HashSet;
 use std::iter::once;
 use std::mem::replace;
 use std::rc::Rc;
@@ -41,15 +42,24 @@ fn is_anchor_node(node: &Node) -> bool {
 impl Output {
 	pub(crate) fn pull(self) -> Term<Output> {
 		let mut stack = vec![self.port.clone()];
+		let mut tags = HashSet::new();
 
 		loop {
 			let mut current = stack.pop().unwrap();
+
+			if let Data::Replicator { tag, .. } = current.node().data() {
+				tags.remove(tag);
+			}
 
 			let linked = loop {
 				let linked = current.linked().unwrap();
 
 				if matches!(linked.kind(), PortKind::Main) {
 					break linked;
+				}
+
+				if let Data::Replicator { tag, .. } = linked.node().data() {
+					tags.insert(*tag);
 				}
 
 				stack.push(replace(&mut current, linked.node().main()));
@@ -96,7 +106,10 @@ impl Output {
 					_ => unreachable!(),
 				};
 			} else {
-				interact(&current, &linked);
+				match linked.node().data() {
+					Data::Replicator { tag, .. } if tags.contains(tag) => interact(&linked, &current),
+					_ => interact(&current, &linked),
+				}
 			}
 		}
 	}
