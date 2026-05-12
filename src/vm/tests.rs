@@ -202,3 +202,23 @@ fn many_exponentiations_on_id_id() {
 
 	assert_stricts_equal(&resolved, &id);
 }
+
+#[test]
+fn counterterm() {
+	let expr = application(
+		lambda(application(binding(0), [application(binding(0), [lambda(binding(0))])])),
+		[lambda(application(
+			lambda(application(binding(0), [
+				lambda(binding(0)),
+				application(binding(0), [lambda(binding(0))]),
+			])),
+			[lambda(application(
+				lambda(lambda(application(binding(1), [application(binding(1), [binding(0)])]))),
+				[lambda(application(binding(1), [application(binding(2), [binding(0)])]))],
+			))],
+		))],
+	);
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &lambda(binding(0)));
+}
