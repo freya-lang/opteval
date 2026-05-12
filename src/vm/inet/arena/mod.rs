@@ -58,11 +58,13 @@ impl Output {
 					break linked;
 				}
 
-				if let Data::Replicator { tag, .. } = linked.node().data() {
+				let received = replace(&mut current, linked.node().main());
+
+				if let Data::Replicator { tag, .. } = received.node().data() {
 					tags.insert(*tag);
 				}
 
-				stack.push(replace(&mut current, linked.node().main()));
+				stack.push(received);
 			};
 
 			if is_anchor_node(current.node()) {
