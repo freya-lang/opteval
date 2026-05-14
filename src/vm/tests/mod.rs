@@ -1,14 +1,21 @@
+mod parsing;
+
 use crate::vm::term::{Lazy, Strict, Term};
+use crate::vm::tests::parsing::term;
 
 fn lambda(body: Strict) -> Strict {
 	Strict::new(Term::Lambda { body })
 }
 
-fn application(left: Strict, right: impl IntoIterator<Item = Strict>) -> Strict {
+fn application(left: Strict, right: Strict) -> Strict {
+	Strict::new(Term::Application { left, right })
+}
+
+fn application_chain(left: Strict, right: impl IntoIterator<Item = Strict>) -> Strict {
 	let mut out = left;
 
 	for item in right {
-		out = Strict::new(Term::Application { left: out, right: item });
+		out = application(out, item);
 	}
 
 	out
@@ -51,7 +58,7 @@ fn encode_number(n: usize) -> Strict {
 	let mut inner = binding(0);
 
 	for _ in 0 .. n {
-		inner = application(binding(1), [inner]);
+		inner = application(binding(1), inner);
 	}
 
 	lambda(lambda(inner))
@@ -60,7 +67,7 @@ fn encode_number(n: usize) -> Strict {
 #[test]
 fn id_on_id() {
 	let id = id();
-	let id_on_id = application(id.clone(), [id.clone()]);
+	let id_on_id = application(id.clone(), id.clone());
 
 	let resolved = Lazy::encode(&id_on_id).to_strict();
 
@@ -71,7 +78,7 @@ fn id_on_id() {
 fn two_on_id() {
 	let two = encode_number(2);
 	let id = id();
-	let two_on_id = application(two.clone(), [id.clone()]);
+	let two_on_id = application(two.clone(), id.clone());
 
 	let resolved = Lazy::encode(&two_on_id).to_strict();
 
@@ -82,7 +89,7 @@ fn two_on_id() {
 fn id_on_two() {
 	let id = id();
 	let two = encode_number(2);
-	let id_on_two = application(id.clone(), [two.clone()]);
+	let id_on_two = application(id.clone(), two.clone());
 
 	let resolved = Lazy::encode(&id_on_two).to_strict();
 
@@ -92,7 +99,7 @@ fn id_on_two() {
 #[test]
 fn two_on_two() {
 	let two = encode_number(2);
-	let two_on_two = application(two.clone(), [two.clone()]);
+	let two_on_two = application(two.clone(), two.clone());
 	let four = encode_number(4);
 
 	let resolved = Lazy::encode(&two_on_two).to_strict();
@@ -103,7 +110,7 @@ fn two_on_two() {
 #[test]
 fn fuse_two_and_two() {
 	let two = encode_number(2);
-	let fused = lambda(application(two.clone(), [application(two.clone(), [binding(0)])]));
+	let fused = lambda(application(two.clone(), application(two.clone(), binding(0))));
 	let four = encode_number(4);
 
 	let resolved = Lazy::encode(&fused).to_strict();
@@ -116,15 +123,15 @@ fn modular_exponentiation() {
 	let type_0 = lambda(lambda(lambda(binding(2))));
 	let type_1 = lambda(lambda(lambda(binding(1))));
 	let type_2 = lambda(lambda(lambda(binding(0))));
-	let rotate = lambda(lambda(application(binding(0), [
-		application(binding(1), [type_1.clone()]),
-		application(binding(1), [type_2.clone()]),
-		application(binding(1), [type_0.clone()]),
+	let rotate = lambda(lambda(application_chain(binding(0), [
+		application(binding(1), type_1.clone()),
+		application(binding(1), type_2.clone()),
+		application(binding(1), type_0.clone()),
 	])));
-	let counter_rotate = lambda(lambda(application(binding(0), [
-		application(binding(1), [type_2.clone()]),
-		application(binding(1), [type_0.clone()]),
-		application(binding(1), [type_1.clone()]),
+	let counter_rotate = lambda(lambda(application_chain(binding(0), [
+		application(binding(1), type_2.clone()),
+		application(binding(1), type_0.clone()),
+		application(binding(1), type_1.clone()),
 	])));
 
 	const CYCLES: usize = 10;
@@ -133,7 +140,7 @@ fn modular_exponentiation() {
 	let mut expr = rotate.clone();
 
 	for _ in 0 .. CYCLES {
-		expr = application(encode_number(2), [expr]);
+		expr = application(encode_number(2), expr);
 	}
 
 	let resolved = Lazy::encode(&expr).to_strict();
@@ -146,18 +153,18 @@ fn two_on_counter_rotate() {
 	let type_0 = lambda(lambda(lambda(binding(2))));
 	let type_1 = lambda(lambda(lambda(binding(1))));
 	let type_2 = lambda(lambda(lambda(binding(0))));
-	let counter_rotate = lambda(lambda(application(binding(0), [
-		application(binding(1), [type_1.clone()]),
-		application(binding(1), [type_2.clone()]),
-		application(binding(1), [type_0.clone()]),
+	let counter_rotate = lambda(lambda(application_chain(binding(0), [
+		application(binding(1), type_1.clone()),
+		application(binding(1), type_2.clone()),
+		application(binding(1), type_0.clone()),
 	])));
-	let expected = lambda(lambda(application(binding(0), [
-		application(binding(1), [type_0.clone()]),
-		application(binding(1), [type_1.clone()]),
-		application(binding(1), [type_2.clone()]),
+	let expected = lambda(lambda(application_chain(binding(0), [
+		application(binding(1), type_0.clone()),
+		application(binding(1), type_1.clone()),
+		application(binding(1), type_2.clone()),
 	])));
 
-	let expr = application(encode_number(3), [counter_rotate]);
+	let expr = application(encode_number(3), counter_rotate);
 	let resolved = Lazy::encode(&expr).to_strict();
 
 	assert_stricts_equal(&resolved, &expected);
@@ -165,11 +172,11 @@ fn two_on_counter_rotate() {
 
 #[test]
 fn duplicate_on_omega() {
-	let duplicate = lambda(lambda(application(binding(0), [binding(1), binding(1)])));
-	let omega = lambda(application(binding(0), [binding(0)]));
-	let expected = lambda(application(binding(0), [omega.clone(), omega.clone()]));
+	let duplicate = lambda(lambda(application_chain(binding(0), [binding(1), binding(1)])));
+	let omega = lambda(application(binding(0), binding(0)));
+	let expected = lambda(application_chain(binding(0), [omega.clone(), omega.clone()]));
 
-	let expr = application(duplicate.clone(), [omega.clone()]);
+	let expr = application(duplicate.clone(), omega.clone());
 	let resolved = Lazy::encode(&expr).to_strict();
 
 	assert_stricts_equal(&resolved, &expected);
@@ -177,11 +184,19 @@ fn duplicate_on_omega() {
 
 #[test]
 fn triplicate_on_omega() {
-	let triplicate = lambda(lambda(application(binding(0), [binding(1), binding(1), binding(1)])));
-	let omega = lambda(application(binding(0), [binding(0)]));
-	let expected = lambda(application(binding(0), [omega.clone(), omega.clone(), omega.clone()]));
+	let triplicate = lambda(lambda(application_chain(binding(0), [
+		binding(1),
+		binding(1),
+		binding(1),
+	])));
+	let omega = lambda(application(binding(0), binding(0)));
+	let expected = lambda(application_chain(binding(0), [
+		omega.clone(),
+		omega.clone(),
+		omega.clone(),
+	]));
 
-	let expr = application(triplicate.clone(), [omega.clone()]);
+	let expr = application(triplicate.clone(), omega.clone());
 	let resolved = Lazy::encode(&expr).to_strict();
 
 	assert_stricts_equal(&resolved, &expected);
@@ -194,8 +209,8 @@ fn many_exponentiations_on_id_id() {
 	let id = id();
 
 	let expr = application(
-		application(application(encode_number(N), [encode_number(2)]), [id.clone()]),
-		[id.clone()],
+		application(application(encode_number(N), encode_number(2)), id.clone()),
+		id.clone(),
 	);
 
 	let resolved = Lazy::encode(&expr).to_strict();
@@ -205,20 +220,9 @@ fn many_exponentiations_on_id_id() {
 
 #[test]
 fn counterterm() {
-	let expr = application(
-		lambda(application(binding(0), [application(binding(0), [lambda(binding(0))])])),
-		[lambda(application(
-			lambda(application(binding(0), [
-				lambda(binding(0)),
-				application(binding(0), [lambda(binding(0))]),
-			])),
-			[lambda(application(
-				lambda(lambda(application(binding(1), [application(binding(1), [binding(0)])]))),
-				[lambda(application(binding(1), [application(binding(2), [binding(0)])]))],
-			))],
-		))],
-	);
+	let expr = term("(!f f (f (!x x))) (!i (!f f (!x x) (f (!x x))) (!a (!f !x f (f x)) (!b a (i b))))");
+	let expected = id();
 	let resolved = Lazy::encode(&expr).to_strict();
 
-	assert_stricts_equal(&resolved, &lambda(binding(0)));
+	assert_stricts_equal(&resolved, &expected);
 }
