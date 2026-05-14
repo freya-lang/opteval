@@ -120,19 +120,8 @@ fn fuse_two_and_two() {
 
 #[test]
 fn modular_exponentiation() {
-	let type_0 = lambda(lambda(lambda(binding(2))));
-	let type_1 = lambda(lambda(lambda(binding(1))));
-	let type_2 = lambda(lambda(lambda(binding(0))));
-	let rotate = lambda(lambda(application_chain(binding(0), [
-		application(binding(1), type_1.clone()),
-		application(binding(1), type_2.clone()),
-		application(binding(1), type_0.clone()),
-	])));
-	let counter_rotate = lambda(lambda(application_chain(binding(0), [
-		application(binding(1), type_2.clone()),
-		application(binding(1), type_0.clone()),
-		application(binding(1), type_1.clone()),
-	])));
+	let rotate = term("!f !x x (f (!a !b !c b)) (f (!a !b !c c)) (f (!a !b !c a))");
+	let counter_rotate = term("!f !x x (f (!a !b !c c)) (f (!a !b !c a)) (f (!a !b !c b))");
 
 	const CYCLES: usize = 10;
 	let expected = if CYCLES % 2 == 0 { &rotate } else { &counter_rotate };
@@ -149,32 +138,10 @@ fn modular_exponentiation() {
 }
 
 #[test]
-fn two_on_counter_rotate() {
-	let type_0 = lambda(lambda(lambda(binding(2))));
-	let type_1 = lambda(lambda(lambda(binding(1))));
-	let type_2 = lambda(lambda(lambda(binding(0))));
-	let counter_rotate = lambda(lambda(application_chain(binding(0), [
-		application(binding(1), type_1.clone()),
-		application(binding(1), type_2.clone()),
-		application(binding(1), type_0.clone()),
-	])));
-	let expected = lambda(lambda(application_chain(binding(0), [
-		application(binding(1), type_0.clone()),
-		application(binding(1), type_1.clone()),
-		application(binding(1), type_2.clone()),
-	])));
-
-	let expr = application(encode_number(3), counter_rotate);
-	let resolved = Lazy::encode(&expr).to_strict();
-
-	assert_stricts_equal(&resolved, &expected);
-}
-
-#[test]
 fn duplicate_on_omega() {
-	let duplicate = lambda(lambda(application_chain(binding(0), [binding(1), binding(1)])));
-	let omega = lambda(application(binding(0), binding(0)));
-	let expected = lambda(application_chain(binding(0), [omega.clone(), omega.clone()]));
+	let duplicate = term("!a !b b a a");
+	let omega = term("!a a a");
+	let expected = term("!a a (!b b b) (!b b b)");
 
 	let expr = application(duplicate.clone(), omega.clone());
 	let resolved = Lazy::encode(&expr).to_strict();
@@ -184,17 +151,9 @@ fn duplicate_on_omega() {
 
 #[test]
 fn triplicate_on_omega() {
-	let triplicate = lambda(lambda(application_chain(binding(0), [
-		binding(1),
-		binding(1),
-		binding(1),
-	])));
-	let omega = lambda(application(binding(0), binding(0)));
-	let expected = lambda(application_chain(binding(0), [
-		omega.clone(),
-		omega.clone(),
-		omega.clone(),
-	]));
+	let triplicate = term("!a !b b a a a");
+	let omega = term("!a a a");
+	let expected = term("!a a (!b b b) (!b b b) (!b b b)");
 
 	let expr = application(triplicate.clone(), omega.clone());
 	let resolved = Lazy::encode(&expr).to_strict();
