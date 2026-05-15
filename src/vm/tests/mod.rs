@@ -185,3 +185,15 @@ fn counterterm() {
 
 	assert_stricts_equal(&resolved, &expected);
 }
+
+#[test]
+fn counterterm_reduced() {
+	let expr = application(
+		term("!q q (!a q (!b q (!c a (b c))))"),
+		term("!a (!b !c b) a a"),
+	);
+	let expected = term("!a (!b (!c a (b c)))");
+	let resolved = Lazy::encode(&expr).to_strict();
+
+	assert_stricts_equal(&resolved, &expected);
+}
