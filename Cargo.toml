@@ -1,10 +1,10 @@
 [package]
-name = "freya-bootstrap"
+name = "opteval"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/freya-lang/freya-bootstrap/"
-description = "bootstrap compiler for freya"
+repository = "https://github.com/freya-lang/opteval/"
+description = "optimal evaluation test"
 
 [lints.rust]
 ambiguous_negative_literals = "warn"

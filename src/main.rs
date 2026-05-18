@@ -1,0 +1,3 @@
+mod vm;
+
+fn main() {}
