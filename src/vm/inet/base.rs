@@ -13,7 +13,7 @@ pub(crate) enum LambdaKind {
 pub(crate) enum Data {
 	Lambda { kind: LambdaKind },
 	Application { live: bool },
-	Replicator { tag: Tag, count: usize },
+	Replicator { id_tag: Tag, output_tags: Vec<Tag> },
 	Reformat,
 	Unlink { level: usize },
 	Binding { index: usize },
@@ -52,7 +52,7 @@ impl Data {
 				kind: LambdaKind::NotLive,
 			} => 1,
 			Data::Application { .. } => 2,
-			Data::Replicator { count, .. } => *count,
+			Data::Replicator { output_tags, .. } => output_tags.len(),
 			Data::Reformat { .. } => 1,
 			Data::Unlink { .. } => 1,
 			Data::Binding { .. } => 0,

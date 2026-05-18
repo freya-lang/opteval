@@ -21,34 +21,68 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 		(&Data::Application { live: true }, &Data::Lambda { kind: LambdaKind::Live }) => application_lambda(),
 		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Application { live: true }) => mirror(application_lambda()),
 
-		(&Data::Replicator { ref tag, count }, &Data::Lambda { kind: LambdaKind::Live }) => {
-			replicator_lambda(tag, count)
-		},
-		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Replicator { ref tag, count }) => {
-			mirror(replicator_lambda(tag, count))
-		},
-
-		(&Data::Replicator { ref tag, count }, &Data::Application { live }) => replicator_application(tag, count, live),
-		(&Data::Application { live }, &Data::Replicator { ref tag, count }) => {
-			mirror(replicator_application(tag, count, live))
-		},
+		(
+			&Data::Replicator {
+				id_tag,
+				ref output_tags,
+			},
+			&Data::Lambda { kind: LambdaKind::Live },
+		) => replicator_lambda(id_tag, output_tags),
+		(
+			&Data::Lambda { kind: LambdaKind::Live },
+			&Data::Replicator {
+				id_tag,
+				ref output_tags,
+			},
+		) => mirror(replicator_lambda(id_tag, output_tags)),
 
 		(
 			&Data::Replicator {
-				tag: ref left_tag,
-				count: left_count,
+				id_tag,
+				ref output_tags,
+			},
+			&Data::Application { live },
+		) => replicator_application(id_tag, output_tags, live),
+		(
+			&Data::Application { live },
+			&Data::Replicator {
+				id_tag,
+				ref output_tags,
+			},
+		) => mirror(replicator_application(id_tag, output_tags, live)),
+
+		(
+			&Data::Replicator {
+				id_tag: left_id_tag,
+				output_tags: ref left_output_tags,
 			},
 			&Data::Replicator {
-				tag: ref right_tag,
-				count: right_count,
+				id_tag: right_id_tag,
+				output_tags: ref right_output_tags,
 			},
-		) => replicator_replicator(left_tag, left_count, right_tag, right_count),
+		) => replicator_replicator(left_id_tag, left_output_tags, right_id_tag, right_output_tags),
 
-		(&Data::Replicator { ref tag, count }, &Data::Reformat) => replicator_reformat(tag, count),
-		(&Data::Reformat, &Data::Replicator { ref tag, count }) => mirror(replicator_reformat(tag, count)),
+		(
+			&Data::Replicator {
+				id_tag,
+				ref output_tags,
+			},
+			&Data::Reformat,
+		) => replicator_reformat(id_tag, output_tags),
+		(
+			&Data::Reformat,
+			&Data::Replicator {
+				id_tag,
+				ref output_tags,
+			},
+		) => mirror(replicator_reformat(id_tag, output_tags)),
 
-		(&Data::Replicator { count, .. }, &Data::Binding { index }) => replicator_binding(count, index),
-		(&Data::Binding { index }, &Data::Replicator { count, .. }) => mirror(replicator_binding(count, index)),
+		(&Data::Replicator { ref output_tags, .. }, &Data::Binding { index }) => {
+			replicator_binding(output_tags.len(), index)
+		},
+		(&Data::Binding { index }, &Data::Replicator { ref output_tags, .. }) => {
+			mirror(replicator_binding(output_tags.len(), index))
+		},
 
 		(&Data::Reformat, &Data::Lambda { kind: LambdaKind::Live }) => reformat_lambda(),
 		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Reformat) => mirror(reformat_lambda()),
@@ -99,21 +133,21 @@ fn application_lambda() -> (Vec<Port>, Vec<Port>) {
 	])
 }
 
-fn replicator_lambda(tag: &Tag, count: usize) -> (Vec<Port>, Vec<Port>) {
+fn replicator_lambda(id_tag: Tag, output_tags: &[Tag]) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
 	let replicator_in = Node::new(Data::Replicator {
-		tag: tag.clone(),
-		count,
+		id_tag,
+		output_tags: output_tags.to_owned(),
 	});
 	let replicator_out = Node::new(Data::Replicator {
-		tag: tag.clone(),
-		count,
+		id_tag,
+		output_tags: output_tags.to_owned(),
 	});
 
-	for i in 0 .. count {
+	for i in 0 .. output_tags.len() {
 		let left_anchor = anchor();
 
 		let lambda = Node::new(Data::Lambda { kind: LambdaKind::Live });
@@ -131,21 +165,21 @@ fn replicator_lambda(tag: &Tag, count: usize) -> (Vec<Port>, Vec<Port>) {
 	(left_anchors, vec![right_anchor_in, right_anchor_out])
 }
 
-fn replicator_application(tag: &Tag, count: usize, live: bool) -> (Vec<Port>, Vec<Port>) {
+fn replicator_application(id_tag: Tag, output_tags: &[Tag], live: bool) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
 	let replicator_in = Node::new(Data::Replicator {
-		tag: tag.clone(),
-		count,
+		id_tag,
+		output_tags: output_tags.to_owned(),
 	});
 	let replicator_out = Node::new(Data::Replicator {
-		tag: tag.clone(),
-		count,
+		id_tag,
+		output_tags: output_tags.to_owned(),
 	});
 
-	for i in 0 .. count {
+	for i in 0 .. output_tags.len() {
 		let left_anchor = anchor();
 
 		let application = Node::new(Data::Application { live });
@@ -164,11 +198,14 @@ fn replicator_application(tag: &Tag, count: usize, live: bool) -> (Vec<Port>, Ve
 }
 
 fn replicator_replicator(
-	left_tag: &Tag,
-	left_count: usize,
-	right_tag: &Tag,
-	right_count: usize,
+	left_id_tag: Tag,
+	left_output_tags: &[Tag],
+	right_id_tag: Tag,
+	right_output_tags: &[Tag],
 ) -> (Vec<Port>, Vec<Port>) {
+	let left_count = left_output_tags.len();
+	let right_count = right_output_tags.len();
+
 	let mut left_anchors = Vec::new();
 	let mut right_anchors = Vec::new();
 
@@ -179,8 +216,8 @@ fn replicator_replicator(
 		right_anchors.push(anchor());
 	}
 
-	if left_tag == right_tag {
-		debug_assert!(left_count == right_count);
+	if left_id_tag == right_id_tag {
+		debug_assert!(left_output_tags == right_output_tags);
 
 		for i in 0 .. left_count {
 			Port::link(&left_anchors[i], &right_anchors[i]);
@@ -193,9 +230,11 @@ fn replicator_replicator(
 	let mut right_aux: Vec<Vec<_>> = Vec::new();
 
 	for i in 0 .. left_count {
+		let left_tag = left_output_tags[i];
+
 		let replicator = Node::new(Data::Replicator {
-			tag: right_tag.combine(left_tag, i),
-			count: right_count,
+			id_tag: left_tag.operate(right_id_tag),
+			output_tags: right_output_tags.iter().map(|&tag| left_tag.operate(tag)).collect(),
 		});
 		left_aux.push(replicator.iter_aux().collect());
 
@@ -204,16 +243,16 @@ fn replicator_replicator(
 
 	for i in 0 .. right_count {
 		let replicator = Node::new(Data::Replicator {
-			tag: left_tag.clone(),
-			count: left_count,
+			id_tag: left_id_tag,
+			output_tags: left_output_tags.to_owned(),
 		});
 		right_aux.push(replicator.iter_aux().collect());
 
 		Port::link(&right_anchors[i], &replicator.main());
 	}
 
-	for l in 0 .. left_count {
-		for r in 0 .. right_count {
+	for l in 0 .. left_output_tags.len() {
+		for r in 0 .. right_output_tags.len() {
 			Port::link(&left_aux[l][r], &right_aux[r][l]);
 		}
 	}
@@ -221,16 +260,16 @@ fn replicator_replicator(
 	(left_anchors, right_anchors)
 }
 
-fn replicator_reformat(tag: &Tag, count: usize) -> (Vec<Port>, Vec<Port>) {
+fn replicator_reformat(id_tag: Tag, output_tags: &[Tag]) -> (Vec<Port>, Vec<Port>) {
 	let mut left_anchors = Vec::new();
 	let right_anchor = anchor();
 
 	let replicator = Node::new(Data::Replicator {
-		tag: tag.clone(),
-		count,
+		id_tag,
+		output_tags: output_tags.to_owned(),
 	});
 
-	for i in 0 .. count {
+	for i in 0 .. output_tags.len() {
 		let left_anchor = anchor();
 
 		let reformat = Node::new(Data::Reformat);

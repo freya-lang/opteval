@@ -47,7 +47,7 @@ impl Output {
 		loop {
 			let mut current = stack.pop().unwrap();
 
-			if let Data::Replicator { tag, .. } = current.node().data() {
+			if let Data::Replicator { id_tag: tag, .. } = current.node().data() {
 				tags.remove(tag);
 			}
 
@@ -60,7 +60,7 @@ impl Output {
 
 				let received = replace(&mut current, linked.node().main());
 
-				if let Data::Replicator { tag, .. } = received.node().data() {
+				if let Data::Replicator { id_tag: tag, .. } = received.node().data() {
 					tags.insert(*tag);
 				}
 
@@ -109,7 +109,7 @@ impl Output {
 				};
 			} else {
 				match linked.node().data() {
-					Data::Replicator { tag, .. } if tags.contains(tag) => interact(&linked, &current),
+					Data::Replicator { id_tag: tag, .. } if tags.contains(tag) => interact(&linked, &current),
 					_ => interact(&current, &linked),
 				}
 			}

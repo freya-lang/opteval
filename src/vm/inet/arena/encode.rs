@@ -8,8 +8,7 @@ use crate::vm::oracle::Tag;
 use crate::vm::term::{Strict, Term};
 
 pub(crate) fn encode(input: &Strict) -> Output {
-	let mut counter = 0;
-	let encoded = encode_inner(&mut counter, &input);
+	let encoded = encode_inner(&input);
 
 	debug_assert!(encoded.bindings.len() == 0);
 
@@ -36,10 +35,10 @@ struct EncodingData {
 	deletion_anchors: Vec<Node>,
 }
 
-fn encode_inner(counter: &mut u64, input: &Strict) -> EncodingData {
+fn encode_inner(input: &Strict) -> EncodingData {
 	match input.get() {
 		Term::Lambda { body } => {
-			let mut body = encode_inner(counter, body);
+			let mut body = encode_inner(body);
 
 			let main_output = anchor();
 
@@ -72,8 +71,8 @@ fn encode_inner(counter: &mut u64, input: &Strict) -> EncodingData {
 			}
 		},
 		Term::Application { left, right } => {
-			let mut left = encode_inner(counter, left);
-			let mut right = encode_inner(counter, right);
+			let mut left = encode_inner(left);
+			let mut right = encode_inner(right);
 
 			let main_output = anchor();
 
@@ -104,10 +103,9 @@ fn encode_inner(counter: &mut u64, input: &Strict) -> EncodingData {
 						let binding_port = anchor();
 
 						let replicator = Node::new(Data::Replicator {
-							tag: Tag::new(*counter),
-							count: 2,
+							id_tag: Tag::new(),
+							output_tags: (0 .. 2).map(|_| Tag::new()).collect(),
 						});
-						*counter = counter.checked_add(1).unwrap();
 
 						Port::link(&binding_port, &replicator.main());
 
