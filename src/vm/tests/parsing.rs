@@ -39,7 +39,7 @@ fn parse<'a>(text: &mut &'a str) -> Ast<'a> {
 				*text = &text[iter.offset() ..];
 				vec.push(parse(text));
 
-				let ')' = text.chars().next().unwrap() else {
+				let ')' = text.chars().next().expect("expected ), found <eof>") else {
 					panic!("expected )");
 				};
 				*text = &text[1 ..];
@@ -47,14 +47,27 @@ fn parse<'a>(text: &mut &'a str) -> Ast<'a> {
 				continue 'top;
 			}
 
-			break 'top;
+			if let ')' = chr {
+				*text = &text[i ..];
+				break 'top;
+			}
+
+			panic!("unexpected character: \"{chr}\"");
 		}
 
 		break;
 	}
 
 	let mut iter = vec.into_iter();
-	let mut out = iter.next().unwrap();
+	let Some(mut out) = iter.next() else {
+		panic!(
+			"expected expression, found {}",
+			text.chars()
+				.next()
+				.map(|x| format!("\"{x}\""))
+				.unwrap_or("<eof>".to_string())
+		);
+	};
 
 	for term in &mut iter {
 		out = Ast::Application {
@@ -68,7 +81,11 @@ fn parse<'a>(text: &mut &'a str) -> Ast<'a> {
 
 fn parse_name<'a>(text: &mut &'a str) -> &'a str {
 	let mut iter = text.char_indices();
-	iter.next().unwrap();
+	let initial = iter.next().expect("expected name after !, found <eof>");
+
+	let ('a' ..= 'z' | 'A' ..= 'Z' | '_') = initial.1 else {
+		panic!("expected name after !, found \"{}\"", initial.1);
+	};
 
 	let mut index = iter.offset();
 
@@ -104,7 +121,9 @@ impl Stack<'_> {
 		let mut out = 0;
 
 		loop {
-			let frame = current.inner.unwrap();
+			let Some(frame) = current.inner else {
+				panic!("could not find corresponding lambda for binding {binding}");
+			};
 
 			if frame.binding_name == binding {
 				break;
@@ -134,7 +153,16 @@ fn convert(ast: Ast<'_>, stack: Stack<'_>) -> Strict {
 }
 
 pub(crate) fn term(mut term: &str) -> Strict {
-	convert(parse(&mut term), Stack { inner: None })
+	let parsed = parse(&mut term);
+
+	if term != "" {
+		panic!(
+			"parsing ended early, found \"{}\" instead of <eof>",
+			term.chars().next().unwrap()
+		);
+	}
+
+	convert(parsed, Stack { inner: None })
 }
 
 #[test]

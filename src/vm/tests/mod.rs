@@ -201,7 +201,7 @@ fn counterterm_extended() {
 		term("!q q (!a q (!b q (!c q (!d q (!e q (!f a (b (c (d (e f))))))))))"),
 		term("!a (!b !c b) a a"),
 	);
-	let expected = term("!a (!b (!c (!d (!e (!f a (b (c (d (e f))))))))))");
+	let expected = term("!a (!b (!c (!d (!e (!f a (b (c (d (e f)))))))))");
 	let resolved = Lazy::encode(&expr).to_strict();
 
 	assert_stricts_equal(&resolved, &expected);
