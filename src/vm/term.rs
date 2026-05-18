@@ -71,10 +71,6 @@ impl Lazy {
 		self.resolved.take().unwrap().map(|x| *x)
 	}
 
-	pub(crate) fn get(&self) -> Term<&Lazy> {
-		self.resolve().as_ref().map(|x| &**x)
-	}
-
 	pub(crate) fn to_strict(self) -> Strict {
 		Strict(Rc::new(self.into().map(|x| x.to_strict())))
 	}
