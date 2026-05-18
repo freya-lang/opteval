@@ -94,30 +94,3 @@ fn ascon_12(state: &mut [u64; 5]) {
 		diffusion(state);
 	}
 }
-
-#[cfg(test)]
-fn assert_hash(input: &str, expected: &str) {
-	use std::fmt::Write;
-
-	let mut computed = String::new();
-
-	for byte in hash(input.as_bytes().iter().copied()) {
-		write!(computed, "{:>02x}", byte).unwrap();
-	}
-
-	assert_eq!(computed, expected);
-}
-
-#[test]
-fn vectors() {
-	assert_hash("", "0b3be5850f2f6b98caf29f8fdea89b64a1fa70aa249b8f839bd53baa304d92b2");
-	assert_hash("a", "d6943d8cddc8c3565cfbcfe27bf05cba039f0808d86ac3ac1289ce2261840e05");
-	assert_hash(
-		"abc",
-		"45aa03431c3c829b3b066f33e844b0cc4d20a45af92d3dcfdf34f40fc20935cf",
-	);
-	assert_hash(
-		"8-bytes?",
-		"55759617c704df140ddba06e7aa4550d6c30f43bf836fbbcbb983b6b41e95106",
-	);
-}

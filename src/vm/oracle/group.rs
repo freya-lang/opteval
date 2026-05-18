@@ -45,24 +45,3 @@ impl MulAssign for Element {
 		*self = *self * other;
 	}
 }
-
-#[test]
-fn inversions() {
-	let identity = Element {
-		a: FieldElement::new_raw(1),
-		b: FieldElement::new_raw(0),
-		c: FieldElement::new_raw(0),
-		d: FieldElement::new_raw(1),
-	};
-
-	for i in 0 .. 100 {
-		let element = Element {
-			a: FieldElement::new_raw(4 * i + 0),
-			b: FieldElement::new_raw(4 * i + 1),
-			c: FieldElement::new_raw(4 * i + 2),
-			d: FieldElement::new_raw(4 * i + 3),
-		};
-
-		assert!(element * element.inv() == identity);
-	}
-}

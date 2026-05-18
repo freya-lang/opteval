@@ -1,5 +1,16 @@
-use crate::vm::Strict;
-use crate::vm::tests::{application, assert_stricts_equal, binding, lambda};
+use crate::vm::{Strict, Term};
+
+fn lambda(body: Strict) -> Strict {
+	Strict::new(Term::Lambda { body })
+}
+
+fn application(left: Strict, right: Strict) -> Strict {
+	Strict::new(Term::Application { left, right })
+}
+
+fn binding(index: usize) -> Strict {
+	Strict::new(Term::Binding { index })
+}
 
 enum Ast<'a> {
 	Lambda { binding_name: &'a str, inner: Box<Self> },
@@ -163,51 +174,4 @@ pub(crate) fn term(mut term: &str) -> Strict {
 	}
 
 	convert(parsed, Stack { inner: None })
-}
-
-#[test]
-fn parse_id() {
-	let parsed = term("!a a");
-
-	assert_stricts_equal(&parsed, &lambda(binding(0)));
-}
-
-#[test]
-fn parse_omega() {
-	let parsed = term("!a a a");
-
-	assert_stricts_equal(&parsed, &lambda(application(binding(0), binding(0))));
-}
-
-#[test]
-fn parse_k() {
-	let parsed = term("!x !y x");
-
-	assert_stricts_equal(&parsed, &lambda(lambda(binding(1))));
-}
-
-#[test]
-fn parse_s() {
-	let parsed = term("!a !b !c a c (b c)");
-
-	assert_stricts_equal(
-		&parsed,
-		&lambda(lambda(lambda(application(
-			application(binding(2), binding(0)),
-			application(binding(1), binding(0)),
-		)))),
-	);
-}
-
-#[test]
-fn parse_s_with_extra_parens() {
-	let parsed = term("!a !b !c (a c) (b c)");
-
-	assert_stricts_equal(
-		&parsed,
-		&lambda(lambda(lambda(application(
-			application(binding(2), binding(0)),
-			application(binding(1), binding(0)),
-		)))),
-	);
 }

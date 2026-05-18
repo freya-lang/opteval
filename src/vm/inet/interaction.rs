@@ -381,18 +381,6 @@ fn unlink_application(level: usize) -> (Vec<Port>, Vec<Port>) {
 	(vec![left_anchor], vec![right_anchor_in, right_anchor_out])
 }
 
-fn unlink_ascend(level: usize) -> (Vec<Port>, Vec<Port>) {
-	let left_anchor = anchor();
-	let right_anchor = anchor();
-
-	let unlink = Node::new(Data::Unlink { level });
-
-	Port::link(&left_anchor, &unlink.aux(0));
-	Port::link(&unlink.main(), &right_anchor);
-
-	(vec![left_anchor], vec![right_anchor])
-}
-
 fn unlink_binding(level: usize, index: usize) -> (Vec<Port>, Vec<Port>) {
 	let left_anchor = anchor();
 

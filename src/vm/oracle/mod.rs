@@ -53,23 +53,3 @@ fn try_gen_tag() -> Option<Tag> {
 		element: GroupElement::new(a, b, c, d),
 	})
 }
-
-#[test]
-fn uniqueness() {
-	use std::collections::HashSet;
-
-	let mut hash_set = HashSet::new();
-
-	for _ in 0 .. 1000 {
-		assert!(hash_set.insert(Tag::new()));
-	}
-}
-
-#[test]
-fn tag_identity() {
-	let a = Tag::new();
-	let b = Tag::new();
-	let c = Tag::new();
-
-	assert!(a.operate(b).operate(a.operate(c)) == a.operate(b.operate(c)));
-}

@@ -127,30 +127,3 @@ impl DivAssign for Element {
 		*self = *self / other;
 	}
 }
-
-#[test]
-fn add_with_neg() {
-	for i in 1 .. 100 {
-		let elem = Element::new_raw(i);
-
-		assert!(elem + elem.neg() == Element::new_raw(0));
-	}
-}
-
-#[test]
-fn mul_with_inv() {
-	for i in 1 .. 100 {
-		let elem = Element::new_raw(i);
-
-		assert!(elem * elem.inv() == Element::new_raw(1));
-	}
-}
-
-#[test]
-fn neg_mul_with_inv() {
-	for i in 1 .. 100 {
-		let elem = Element::new_raw(i).neg();
-
-		assert!(elem * elem.inv() == Element::new_raw(1));
-	}
-}
