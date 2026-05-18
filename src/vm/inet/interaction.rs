@@ -1,4 +1,4 @@
-use crate::vm::inet::base::{Data, LambdaKind, Node, Port, PortKind};
+use crate::vm::inet::base::{Data, Node, Port, PortKind};
 use crate::vm::inet::util::{anchor, join_slice};
 use crate::vm::oracle::Tag;
 
@@ -18,18 +18,18 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 	let right_aux: Vec<_> = right.node().iter_aux().map(|port| port.retract()).collect();
 
 	let (left_new, right_new) = match (left.node().data(), right.node().data()) {
-		(&Data::Application { live: true }, &Data::Lambda { kind: LambdaKind::Live }) => application_lambda(),
-		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Application { live: true }) => mirror(application_lambda()),
+		(&Data::Application { live: true }, &Data::Lambda { live: true }) => application_lambda(),
+		(&Data::Lambda { live: true }, &Data::Application { live: true }) => mirror(application_lambda()),
 
 		(
 			&Data::Replicator {
 				id_tag,
 				ref output_tags,
 			},
-			&Data::Lambda { kind: LambdaKind::Live },
+			&Data::Lambda { live: true },
 		) => replicator_lambda(id_tag, output_tags),
 		(
-			&Data::Lambda { kind: LambdaKind::Live },
+			&Data::Lambda { live: true },
 			&Data::Replicator {
 				id_tag,
 				ref output_tags,
@@ -84,26 +84,16 @@ pub(crate) fn interact(left: &Port, right: &Port) {
 			mirror(replicator_binding(output_tags.len(), index))
 		},
 
-		(&Data::Reformat, &Data::Lambda { kind: LambdaKind::Live }) => reformat_lambda(),
-		(&Data::Lambda { kind: LambdaKind::Live }, &Data::Reformat) => mirror(reformat_lambda()),
+		(&Data::Reformat, &Data::Lambda { live: true }) => reformat_lambda(),
+		(&Data::Lambda { live: true }, &Data::Reformat) => mirror(reformat_lambda()),
 
 		(&Data::Reformat, &Data::Application { live: true }) => reformat_application(),
 		(&Data::Application { live: true }, &Data::Reformat) => mirror(reformat_application()),
 
 		(&Data::Reformat, &Data::Reformat) => reformat_reformat(),
 
-		(
-			&Data::Unlink { level },
-			&Data::Lambda {
-				kind: LambdaKind::Live { .. },
-			},
-		) => unlink_lambda(level),
-		(
-			&Data::Lambda {
-				kind: LambdaKind::Live { .. },
-			},
-			&Data::Unlink { level },
-		) => mirror(unlink_lambda(level)),
+		(&Data::Unlink { level }, &Data::Lambda { live: true }) => unlink_lambda(level),
+		(&Data::Lambda { live: true }, &Data::Unlink { level }) => mirror(unlink_lambda(level)),
 
 		(&Data::Unlink { level }, &Data::Application { live: false }) => unlink_application(level),
 		(&Data::Application { live: false }, &Data::Unlink { level }) => mirror(unlink_application(level)),
@@ -150,7 +140,7 @@ fn replicator_lambda(id_tag: Tag, output_tags: &[Tag]) -> (Vec<Port>, Vec<Port>)
 	for i in 0 .. output_tags.len() {
 		let left_anchor = anchor();
 
-		let lambda = Node::new(Data::Lambda { kind: LambdaKind::Live });
+		let lambda = Node::new(Data::Lambda { live: true });
 
 		Port::link(&left_anchor, &lambda.main());
 		Port::link(&lambda.aux(0), &replicator_in.aux(i));
@@ -306,7 +296,7 @@ fn reformat_lambda() -> (Vec<Port>, Vec<Port>) {
 	let right_anchor_in = anchor();
 	let right_anchor_out = anchor();
 
-	let lambda = Node::new(Data::Lambda { kind: LambdaKind::Live });
+	let lambda = Node::new(Data::Lambda { live: true });
 	let reformat_in = Node::new(Data::Reformat);
 	let reformat_out = Node::new(Data::Reformat);
 
@@ -357,9 +347,7 @@ fn unlink_lambda(mut level: usize) -> (Vec<Port>, Vec<Port>) {
 
 	level += 1;
 
-	let lambda = Node::new(Data::Lambda {
-		kind: LambdaKind::NotLive,
-	});
+	let lambda = Node::new(Data::Lambda { live: false });
 	let unlink = Node::new(Data::Unlink { level });
 	let binding = Node::new(Data::Binding { index: level });
 

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::vm::inet::arena::{Arena, Output};
-use crate::vm::inet::base::{Data, LambdaKind, Node, Port};
+use crate::vm::inet::base::{Data, Node, Port};
 use crate::vm::inet::util::anchor;
 use crate::vm::oracle::Tag;
 use crate::vm::term::{Strict, Term};
@@ -42,7 +42,7 @@ fn encode_inner(input: &Strict) -> EncodingData {
 
 			let main_output = anchor();
 
-			let lambda = Node::new(Data::Lambda { kind: LambdaKind::Live });
+			let lambda = Node::new(Data::Lambda { live: true });
 
 			Port::link(&main_output, &lambda.main());
 

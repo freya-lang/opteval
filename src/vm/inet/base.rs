@@ -5,13 +5,8 @@ use std::rc::Rc;
 use crate::vm::inet::util::anchor;
 use crate::vm::oracle::Tag;
 
-pub(crate) enum LambdaKind {
-	Live,
-	NotLive,
-}
-
 pub(crate) enum Data {
-	Lambda { kind: LambdaKind },
+	Lambda { live: bool },
 	Application { live: bool },
 	Replicator { id_tag: Tag, output_tags: Vec<Tag> },
 	Reformat,
@@ -47,10 +42,8 @@ struct Backing {
 impl Data {
 	fn num_aux(&self) -> usize {
 		match self {
-			Data::Lambda { kind: LambdaKind::Live } => 2,
-			Data::Lambda {
-				kind: LambdaKind::NotLive,
-			} => 1,
+			Data::Lambda { live: true } => 2,
+			Data::Lambda { live: false } => 1,
 			Data::Application { .. } => 2,
 			Data::Replicator { output_tags, .. } => output_tags.len(),
 			Data::Reformat { .. } => 1,
